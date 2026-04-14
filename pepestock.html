@@ -933,37 +933,59 @@ window.abrirScanner = async () => {
   document.getElementById('scanner-modal-overlay').classList.add('open');
   document.getElementById('scanner-status').textContent = 'Iniciando cámara...';
   try {
-    scannerStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    scannerStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } } });
     const video = document.getElementById('scanner-video');
     video.srcObject = scannerStream;
     await video.play();
-    document.getElementById('scanner-status').textContent = 'Apunta al código de barras o QR del producto';
-    // Usar BarcodeDetector si está disponible
-    if ('BarcodeDetector' in window) {
-      const detector = new BarcodeDetector({ formats: ['ean_13','ean_8','qr_code','code_128','code_39','upc_a','upc_e'] });
-      const canvas = document.getElementById('scanner-canvas');
-      const ctx = canvas.getContext('2d');
-      scannerInterval = setInterval(async () => {
-        if (video.readyState === video.HAVE_ENOUGH_DATA) {
-          canvas.width = video.videoWidth;
-          canvas.height = video.videoHeight;
-          ctx.drawImage(video, 0, 0);
-          try {
-            const codes = await detector.detect(canvas);
-            if (codes.length > 0) {
-              const valor = codes[0].rawValue;
-              document.getElementById('p-nombre').value = valor;
-              document.getElementById('scanner-status').textContent = `✅ Detectado: ${valor}`;
-              setTimeout(() => cerrarScanner(), 800);
-            }
-          } catch(e) {}
-        }
-      }, 300);
-    } else {
-      document.getElementById('scanner-status').textContent = '⚠️ Tu navegador no soporta escaneo automático. Captura la imagen y escribe el código manualmente.';
+    document.getElementById('scanner-status').textContent = '📷 Apunta al código de barras o QR...';
+
+    // Cargar ZXing si no está cargado
+    if (!window.ZXing) {
+      await new Promise((res, rej) => {
+        const s = document.createElement('script');
+        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/zxing-js/0.20.0/zxing.min.js';
+        s.onload = res; s.onerror = rej;
+        document.head.appendChild(s);
+      });
     }
+
+    const canvas = document.getElementById('scanner-canvas');
+    const ctx = canvas.getContext('2d');
+    const hints = new Map();
+    const formats = [
+      ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.EAN_8,
+      ZXing.BarcodeFormat.CODE_128, ZXing.BarcodeFormat.CODE_39,
+      ZXing.BarcodeFormat.UPC_A, ZXing.BarcodeFormat.UPC_E,
+      ZXing.BarcodeFormat.QR_CODE, ZXing.BarcodeFormat.DATA_MATRIX,
+      ZXing.BarcodeFormat.ITF, ZXing.BarcodeFormat.CODABAR
+    ];
+    hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, formats);
+    hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+    const reader = new ZXing.MultiFormatReader();
+    reader.setHints(hints);
+
+    scannerInterval = setInterval(() => {
+      if (video.readyState !== video.HAVE_ENOUGH_DATA) return;
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0);
+      try {
+        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const luminance = new ZXing.RGBLuminanceSource(imgData.data, canvas.width, canvas.height);
+        const bitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminance));
+        const result = reader.decode(bitmap);
+        if (result) {
+          const valor = result.getText();
+          document.getElementById('p-nombre').value = valor;
+          document.getElementById('scanner-status').textContent = `✅ Detectado: ${valor}`;
+          setTimeout(() => cerrarScanner(), 900);
+        }
+      } catch(e) { /* sigue intentando */ }
+    }, 250);
+
   } catch(e) {
-    document.getElementById('scanner-status').textContent = '❌ No se pudo acceder a la cámara. Verifica los permisos.';
+    document.getElementById('scanner-status').textContent = '❌ No se pudo acceder a la cámara. Verifica los permisos del navegador.';
+    console.error(e);
   }
 };
 
