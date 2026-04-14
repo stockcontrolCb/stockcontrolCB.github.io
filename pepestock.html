@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PepeStock</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐸</text></svg>">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0f1117; --surface: #1a1d27; --surface2: #222537; --border: #2a2d3a;
+      --accent: #4f8ef7; --accent2: #38d9a9; --accent3: #f9a825;
+      --text: #e8eaf0; --muted: #6b7280; --danger: #f87171; --success: #38d9a9;
+      --radius: 12px; --nav-w: 220px;
+    }
+    body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; }
+
+    /* ── LOGIN ── */
+    #view-login {
+      width: 100%; display: flex; align-items: center; justify-content: center; padding: 24px; min-height: 100vh;
+    }
+    #view-login::before {
+      content: ''; position: fixed; top: -200px; left: -200px; width: 600px; height: 600px;
+      background: radial-gradient(circle, rgba(79,142,247,0.08) 0%, transparent 70%); pointer-events: none;
+    }
+    .login-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 20px;
+      padding: 48px 40px; width: 100%; max-width: 420px; animation: fadeUp 0.5s ease;
+    }
+    .logo { display: flex; align-items: center; gap: 10px; margin-bottom: 32px; }
+    .logo-icon {
+      width: 40px; height: 40px; background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px;
+    }
+    .logo-text { font-size: 22px; font-weight: 600; }
+    .logo-text span { color: var(--accent); }
+    .tabs { display: flex; background: var(--bg); border-radius: 10px; padding: 4px; margin-bottom: 28px; }
+    .tab {
+      flex: 1; padding: 8px; text-align: center; border-radius: 8px; cursor: pointer;
+      font-size: 14px; font-weight: 500; color: var(--muted); transition: all 0.2s; border: none; background: none;
+    }
+    .tab.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 4px rgba(0,0,0,0.3); }
+    .panel { display: none; }
+    .panel.active { display: block; }
+    .msg { margin-top: 14px; padding: 10px 14px; border-radius: 8px; font-size: 13px; display: none; }
+    .msg.error { background: rgba(248,113,113,0.1); color: var(--danger); border: 1px solid rgba(248,113,113,0.2); display: block; }
+    .msg.success { background: rgba(56,217,169,0.1); color: var(--accent2); border: 1px solid rgba(56,217,169,0.2); display: block; }
+
+    /* ── APP SHELL ── */
+    #view-app { display: none; width: 100%; }
+    #view-app.visible { display: flex; }
+
+    /* ── NAV ── */
+    .nav {
+      width: var(--nav-w); background: var(--surface); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; padding: 24px 16px;
+      position: fixed; top: 0; left: 0; bottom: 0; z-index: 100;
+    }
+    .nav-logo { display: flex; align-items: center; gap: 10px; padding: 0 8px; margin-bottom: 32px; }
+    .nav-logo-icon {
+      width: 36px; height: 36px; background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px;
+    }
+    .nav-logo-text { font-size: 17px; font-weight: 600; }
+    .nav-logo-text span { color: var(--accent); }
+    .nav-section { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); padding: 0 8px; margin-bottom: 8px; }
+    .nav-link {
+      display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px;
+      color: var(--muted); text-decoration: none; font-size: 14px; font-weight: 500;
+      margin-bottom: 2px; transition: all 0.15s; cursor: pointer; border: none; background: none; width: 100%; text-align: left;
+    }
+    .nav-link:hover { background: var(--surface2); color: var(--text); }
+    .nav-link.active { background: rgba(79,142,247,0.12); color: var(--accent); }
+    .nav-link .icon { font-size: 17px; width: 20px; text-align: center; }
+    .nav-bottom { margin-top: auto; }
+    .nav-user {
+      display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+      border-radius: 10px; background: var(--surface2); margin-bottom: 8px;
+    }
+    .nav-user-avatar {
+      width: 32px; height: 32px; background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      font-size: 14px; font-weight: 600; color: #fff; flex-shrink: 0;
+    }
+    .nav-user-name { font-size: 13px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .nav-user-email { font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .btn-logout {
+      display: flex; align-items: center; gap: 8px; width: 100%; padding: 10px 12px;
+      background: none; border: 1px solid var(--border); border-radius: 10px; color: var(--muted);
+      font-family: 'DM Sans', sans-serif; font-size: 13px; cursor: pointer; transition: all 0.15s;
+    }
+    .btn-logout:hover { border-color: var(--danger); color: var(--danger); }
+
+    /* ── MAIN ── */
+    .main { margin-left: var(--nav-w); flex: 1; padding: 32px; max-width: calc(100vw - var(--nav-w)); }
+    .section { display: none; }
+    .section.active { display: block; }
+    .page-header { margin-bottom: 28px; }
+    .page-title { font-size: 24px; font-weight: 600; }
+    .page-subtitle { color: var(--muted); font-size: 14px; margin-top: 4px; }
+
+    /* ── CARDS ── */
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 24px; }
+    .card-title { font-size: 15px; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+
+    /* ── GRID ── */
+    .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+
+    /* ── STAT ── */
+    .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px 24px; }
+    .stat-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+    .stat-value { font-size: 32px; font-weight: 600; }
+    .stat-sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+    /* ── BUTTONS ── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px; padding: 10px 18px;
+      background: var(--accent); color: #fff; border: none; border-radius: var(--radius);
+      font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600;
+      cursor: pointer; transition: opacity 0.2s, transform 0.1s; text-decoration: none;
+    }
+    .btn:hover { opacity: 0.88; }
+    .btn:active { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+    .btn-danger { background: var(--danger); }
+    .btn-sm { padding: 6px 12px; font-size: 13px; }
+    .btn-full { width: 100%; padding: 13px; font-size: 15px; justify-content: center; }
+
+    /* ── FORMS ── */
+    .form-group { margin-bottom: 18px; }
+    label { display: block; font-size: 12px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+    input, select, textarea {
+      width: 100%; padding: 11px 14px; background: var(--bg); border: 1px solid var(--border);
+      border-radius: var(--radius); color: var(--text); font-family: 'DM Sans', sans-serif;
+      font-size: 14px; outline: none; transition: border-color 0.2s;
+    }
+    input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+    select option { background: var(--surface); }
+    textarea { resize: vertical; min-height: 80px; }
+
+    /* ── TABLE ── */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); padding: 10px 16px; border-bottom: 1px solid var(--border); }
+    td { padding: 14px 16px; border-bottom: 1px solid var(--border); font-size: 14px; vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,0.02); }
+
+    /* ── BADGE ── */
+    .badge { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+    .badge-blue   { background: rgba(79,142,247,0.15);  color: var(--accent); }
+    .badge-green  { background: rgba(56,217,169,0.15);  color: var(--accent2); }
+    .badge-yellow { background: rgba(249,168,37,0.15);  color: var(--accent3); }
+    .badge-red    { background: rgba(248,113,113,0.15); color: var(--danger); }
+
+    /* ── MODAL ── */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 24px; }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 20px;
+      padding: 32px; width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; animation: fadeUp 0.25s ease;
+    }
+    .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+    .modal-title { font-size: 18px; font-weight: 600; }
+    .modal-close { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 20px; padding: 4px; }
+    .modal-close:hover { color: var(--text); }
+
+    /* ── TOAST ── */
+    #toast {
+      position: fixed; bottom: 28px; right: 28px; background: var(--surface);
+      border: 1px solid var(--border); border-radius: 12px; padding: 14px 20px;
+      font-size: 14px; z-index: 9999; transform: translateY(80px); opacity: 0;
+      transition: all 0.3s ease; max-width: 320px; pointer-events: none;
+    }
+    #toast.show { transform: translateY(0); opacity: 1; }
+    #toast.success { border-color: var(--success); color: var(--success); }
+    #toast.error { border-color: var(--danger); color: var(--danger); }
+
+    /* ── EMPTY ── */
+    .empty { text-align: center; padding: 48px 24px; color: var(--muted); }
+    .empty-icon { font-size: 40px; margin-bottom: 12px; }
+    .empty-text { font-size: 15px; margin-bottom: 4px; color: var(--text); }
+    .empty-sub { font-size: 13px; }
+
+    /* ── LIGHTBOX ── */
+    #lightbox-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.92); display: none;
+      align-items: center; justify-content: center; z-index: 9990; cursor: zoom-out;
+    }
+    #lightbox-overlay.open { display: flex; }
+    #lightbox-img { max-width: 90vw; max-height: 90vh; border-radius: 12px; box-shadow: 0 24px 80px rgba(0,0,0,0.7); }
+    #lightbox-close { position: absolute; top: 20px; right: 28px; font-size: 32px; color: #fff; cursor: pointer; background: none; border: none; line-height: 1; }
+
+    /* ── CLICKABLE IMAGES ── */
+    .prod-img { width: 44px; height: 44px; border-radius: 8px; object-fit: cover; background: var(--surface2); cursor: zoom-in; transition: transform 0.15s; }
+    .prod-img:hover { transform: scale(1.08); }
+
+    /* ── SCANNER ── */
+    #scanner-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: none; align-items: center; justify-content: center; z-index: 1100; }
+    #scanner-modal-overlay.open { display: flex; }
+    #scanner-box { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 28px; width: 100%; max-width: 440px; }
+    #scanner-video { width: 100%; border-radius: 10px; background: #000; display: block; }
+    #scanner-status { margin-top: 10px; font-size: 13px; color: var(--muted); text-align: center; }
+
+    /* ── DELETE HISTORY ── */
+    .btn-delete-hist { background: none; border: none; color: var(--danger); cursor: pointer; font-size: 16px; padding: 4px 8px; opacity: 0.7; transition: opacity 0.15s; }
+    .btn-delete-hist:hover { opacity: 1; }
+    .prod-img-placeholder { width: 44px; height: 44px; border-radius: 8px; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-size: 20px; }
+
+    /* ── STOCK COLORS ── */
+    .stock-ok   { color: var(--accent2); }
+    .stock-low  { color: var(--accent3); }
+    .stock-zero { color: var(--danger); }
+
+    /* ── SPINNER ── */
+    .spinner { width: 20px; height: 20px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; display: inline-block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes fadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 768px) {
+      .nav { width: 60px; padding: 16px 8px; }
+      .nav-logo-text, .nav-link span:not(.icon), .nav-user-name, .nav-user-email, .nav-section, .btn-logout span { display: none; }
+      .nav-link { justify-content: center; }
+      .main { margin-left: 60px; padding: 20px 16px; max-width: calc(100vw - 60px); }
+      .grid-4 { grid-template-columns: repeat(2,1fr); }
+      .grid-3 { grid-template-columns: repeat(2,1fr); }
+      .grid-2 { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ════════════════════════════════
+     LOGIN
+════════════════════════════════ -->
+<div id="view-login">
+  <div class="login-card">
+    <div class="logo">
+      <div class="logo-icon">🐸</div>
+      <div class="logo-text">Pepe<span>Stock</span></div>
+    </div>
+    <h2 style="font-size:18px;font-weight:500;margin-bottom:6px;">Bienvenido</h2>
+    <p style="color:var(--muted);font-size:14px;margin-bottom:32px;">Gestión de inventario y salidas</p>
+
+    <div class="panel active" id="panel-login">
+      <div class="form-group"><label>Correo</label><input type="email" id="login-email" placeholder="correo@ejemplo.com"/></div>
+      <div class="form-group"><label>Contraseña</label><input type="password" id="login-pass" placeholder="••••••••"/></div>
+      <button class="btn btn-full" id="btn-login" onclick="doLogin()">Entrar</button>
+      <div class="msg" id="login-msg"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════
+     APP SHELL
+════════════════════════════════ -->
+<div id="view-app">
+
+  <!-- NAV -->
+  <nav class="nav">
+    <div class="nav-logo">
+      <div class="nav-logo-icon">🐸</div>
+      <div class="nav-logo-text">Pepe<span>Stock</span></div>
+    </div>
+    <div class="nav-section">Menú</div>
+    <button class="nav-link" id="nav-productos" onclick="showSection('productos')"><span class="icon">📦</span><span>Productos</span></button>
+    <button class="nav-link" id="nav-salidas" onclick="showSection('salidas')"><span class="icon">📤</span><span>Salidas</span></button>
+    <button class="nav-link" id="nav-historial" onclick="showSection('historial')"><span class="icon">📋</span><span>Historial</span></button>
+    <button class="nav-link active" id="nav-dashboard" onclick="showSection('dashboard')"><span class="icon">🏠</span><span>Dashboard</span></button>
+    <div class="nav-bottom">
+      <div class="nav-user">
+        <div class="nav-user-avatar" id="user-avatar">?</div>
+        <div>
+          <div class="nav-user-name" id="user-name">Cargando...</div>
+          <div class="nav-user-email" id="user-email"></div>
+        </div>
+      </div>
+      <button class="btn-logout" onclick="doLogout()">🚪 <span>Cerrar sesión</span></button>
+    </div>
+  </nav>
+
+  <!-- MAIN CONTENT -->
+  <main class="main">
+
+    <!-- ── DASHBOARD ── -->
+    <div class="section active" id="section-dashboard">
+      <div class="page-header">
+        <div class="page-title">Dashboard</div>
+        <div class="page-subtitle">Resumen general del inventario</div>
+      </div>
+      <div class="grid-4" style="margin-bottom:24px;">
+        <div class="stat-card"><div class="stat-label">Total productos</div><div class="stat-value" id="stat-total">—</div><div class="stat-sub">en catálogo</div></div>
+        <div class="stat-card"><div class="stat-label">Unidades en stock</div><div class="stat-value" id="stat-stock">—</div><div class="stat-sub">piezas totales</div></div>
+        <div class="stat-card"><div class="stat-label">Cajas enviadas</div><div class="stat-value" id="stat-cajas">—</div><div class="stat-sub">en total</div></div>
+        <div class="stat-card"><div class="stat-label">Stock bajo</div><div class="stat-value stock-low" id="stat-bajo">—</div><div class="stat-sub">productos ≤ 10 pz</div></div>
+      </div>
+      <div class="grid-2" style="gap:20px;">
+        <div class="card">
+          <div class="card-title">📤 Productos más enviados</div>
+          <div id="top-enviados"><div class="empty"><div class="spinner"></div></div></div>
+        </div>
+        <div class="card">
+          <div class="card-title">📊 Productos con más stock</div>
+          <div id="top-productos"><div class="empty"><div class="spinner"></div></div></div>
+        </div>
+      </div>
+      <div class="grid-2" style="gap:20px;margin-top:20px;">
+        <div class="card">
+          <div class="card-title">📤 Últimas salidas</div>
+          <div id="ultimas-salidas"><div class="empty"><div class="spinner"></div></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── PRODUCTOS ── -->
+    <div class="section" id="section-productos">
+      <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;">
+        <div>
+          <div class="page-title">Productos</div>
+          <div class="page-subtitle">Catálogo e inventario</div>
+        </div>
+        <button class="btn" onclick="abrirModal()">+ Agregar producto</button>
+      </div>
+      <div style="margin-bottom:20px;">
+        <input type="text" id="buscador" placeholder="🔍 Buscar producto..." oninput="filtrarProductos()" style="max-width:360px;">
+      </div>
+      <div class="card" style="padding:0;overflow:hidden;">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Imagen</th><th>Nombre</th><th>Descripción</th><th>Stock</th><th>Acciones</th></tr></thead>
+            <tbody id="tabla-body"><tr><td colspan="5" style="text-align:center;padding:40px;"><div class="spinner"></div></td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SALIDAS ── -->
+    <div class="section" id="section-salidas">
+      <div class="page-header">
+        <div class="page-title">Salidas por caja</div>
+        <div class="page-subtitle">Registra los productos que salen en cada caja</div>
+      </div>
+      <div class="grid-2" style="gap:24px;align-items:start;">
+        <div class="card">
+          <div class="card-title">📦 Nueva caja de salida</div>
+          <div class="form-group">
+            <label>Nombre de la caja *</label>
+            <input type="text" id="caja-nombre" placeholder="Ej: Caja 1, Envío Monterrey..."/>
+          </div>
+          <div class="form-group">
+            <label>Agregar producto a la caja</label>
+            <div style="display:flex;gap:8px;">
+              <select id="prod-select" style="flex:1;"><option value="">— Selecciona un producto —</option></select>
+              <input type="number" id="prod-cantidad" placeholder="Pzas" min="1" style="width:80px;flex-shrink:0;"/>
+              <button class="btn btn-secondary" onclick="agregarItem()" style="flex-shrink:0;">+ Add</button>
+            </div>
+          </div>
+          <div id="items-caja" style="margin-bottom:20px;">
+            <div style="color:var(--muted);font-size:13px;text-align:center;padding:20px;">Aún no hay productos en esta caja</div>
+          </div>
+          <div id="resumen-total" style="display:none;background:var(--bg);border-radius:10px;padding:14px;margin-bottom:20px;">
+            <div style="display:flex;justify-content:space-between;font-size:14px;"><span style="color:var(--muted);">Total de piezas:</span><strong id="total-pzas">0</strong></div>
+            <div style="display:flex;justify-content:space-between;font-size:14px;margin-top:6px;"><span style="color:var(--muted);">Tipos de producto:</span><strong id="total-tipos">0</strong></div>
+          </div>
+          <button class="btn" style="width:100%;" onclick="enviarCaja()">📤 Registrar salida</button>
+          <div id="caja-msg" style="margin-top:12px;font-size:13px;color:var(--danger);display:none;"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">📊 Stock actual</div>
+          <div id="stock-lista"><div class="empty"><div class="spinner"></div></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── HISTORIAL ── -->
+    <div class="section" id="section-historial">
+      <div class="page-header">
+        <div class="page-title">Historial de salidas</div>
+        <div class="page-subtitle">Registro de todas las cajas enviadas</div>
+      </div>
+      <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
+        <input type="text" id="filtro-caja" placeholder="🔍 Buscar por nombre de caja..." oninput="filtrarHistorial()" style="max-width:280px;">
+        <input type="date" id="filtro-fecha" onchange="filtrarHistorial()" style="max-width:180px;">
+        <button class="btn btn-secondary btn-sm" onclick="limpiarFiltros()">Limpiar filtros</button>
+      </div>
+      <div class="grid-3" style="margin-bottom:24px;">
+        <div class="stat-card"><div class="stat-label">Total cajas</div><div class="stat-value" id="r-cajas">—</div></div>
+        <div class="stat-card"><div class="stat-label">Total piezas enviadas</div><div class="stat-value" id="r-piezas">—</div></div>
+        <div class="stat-card"><div class="stat-label">Producto más enviado</div><div class="stat-value" id="r-top" style="font-size:16px;margin-top:4px;">—</div></div>
+      </div>
+      <div id="lista-cajas"><div class="empty"><div class="spinner"></div></div></div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ════════════════════════════════
+     MODAL PRODUCTOS
+════════════════════════════════ -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-titulo">Agregar producto</div>
+      <button class="modal-close" onclick="cerrarModal()">✕</button>
+    </div>
+    <div class="form-group"><label>Nombre del producto *</label>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <input type="text" id="p-nombre" placeholder="Ej: Camiseta talla M" style="flex:1;"/>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="abrirScanner()" title="Escanear código" style="flex-shrink:0;font-size:18px;padding:10px 12px;">📷</button>
+      </div>
+    </div>
+    <div class="form-group"><label>Descripción</label><textarea id="p-desc" placeholder="Descripción opcional..."></textarea></div>
+    <div class="form-group"><label>Stock inicial</label><input type="number" id="p-stock" placeholder="0" min="0"/></div>
+    <div class="form-group">
+      <label>Imagen del producto</label>
+      <input type="file" id="p-imagen" accept="image/*" onchange="previewImg(event)"/>
+      <div id="img-preview" style="margin-top:10px;display:none;"><img id="preview-src" style="width:80px;height:80px;object-fit:cover;border-radius:8px;border:1px solid var(--border);"></div>
+      <div id="img-current" style="margin-top:10px;display:none;">
+        <img id="current-src" style="width:80px;height:80px;object-fit:cover;border-radius:8px;border:1px solid var(--border);">
+        <div style="font-size:12px;color:var(--muted);margin-top:4px;">Imagen actual (deja vacío para conservar)</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px;">
+      <button class="btn btn-secondary" onclick="cerrarModal()">Cancelar</button>
+      <button class="btn" id="btn-guardar" onclick="guardarProducto()">Guardar</button>
+    </div>
+    <div id="modal-msg" style="margin-top:12px;font-size:13px;color:var(--danger);display:none;"></div>
+  </div>
+</div>
+
+<!-- LIGHTBOX -->
+<div id="lightbox-overlay" onclick="cerrarLightbox()">
+  <button id="lightbox-close" onclick="cerrarLightbox()">✕</button>
+  <img id="lightbox-img" src="" alt="Imagen ampliada"/>
+</div>
+
+<!-- SCANNER MODAL -->
+<div id="scanner-modal-overlay">
+  <div id="scanner-box">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <div style="font-size:17px;font-weight:600;">📷 Escanear código</div>
+      <button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;" onclick="cerrarScanner()">✕</button>
+    </div>
+    <video id="scanner-video" autoplay playsinline></video>
+    <canvas id="scanner-canvas" style="display:none;"></canvas>
+    <div id="scanner-status">Apunta la cámara al código de barras o QR del producto</div>
+    <button class="btn btn-secondary" style="width:100%;margin-top:14px;" onclick="cerrarScanner()">Cancelar</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<!-- ════════════════════════════════
+     SCRIPT
+════════════════════════════════ -->
+<script type="module">
+import { initializeApp }  from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut }
+  from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc,
+         doc, getDoc, serverTimestamp, onSnapshot, query, orderBy, limit, writeBatch }
+  from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+// ── Firebase Config ──────────────────────────────
+const app  = initializeApp({
+  apiKey: "AIzaSyCzUmriMhlk__1iH1-RtZ6_71iuMjgLQM8",
+  authDomain: "controlstock-25f57.firebaseapp.com",
+  projectId: "controlstock-25f57",
+  storageBucket: "controlstock-25f57.firebasestorage.app",
+  messagingSenderId: "759883177832",
+  appId: "1:759883177832:web:d51ec0add23d5d274e80dd"
+});
+const auth = getAuth(app);
+const db   = getFirestore(app);
+const CLOUD  = "dhhk0iwkw";
+const PRESET = "phtosmlnre";
+
+// ── State ─────────────────────────────────────────
+let currentUser = null;
+let userName    = '';
+let productos   = [];
+let historial   = [];
+let itemsCaja   = [];
+let editId      = null;
+let unsubProds  = null;
+let unsubHist   = null;
+
+// ── Auth ──────────────────────────────────────────
+onAuthStateChanged(auth, async user => {
+  if (user) {
+    currentUser = user;
+    try {
+      const snap = await getDoc(doc(db,'usuarios',user.uid));
+      userName = snap.exists() ? snap.data().nombre : (user.displayName || user.email);
+    } catch(e) {
+      userName = user.displayName || user.email;
+    }
+    document.getElementById('user-name').textContent    = userName;
+    document.getElementById('user-email').textContent   = user.email;
+    document.getElementById('user-avatar').textContent  = userName[0].toUpperCase();
+    document.getElementById('view-login').style.display = 'none';
+    document.getElementById('view-app').classList.add('visible');
+    initListeners();
+    showSection('dashboard');
+  } else {
+    currentUser = null;
+    document.getElementById('view-login').style.display = 'flex';
+    document.getElementById('view-app').classList.remove('visible');
+  }
+});
+
+function initListeners() {
+  // Productos en tiempo real
+  if (unsubProds) unsubProds();
+  unsubProds = onSnapshot(collection(db,'productos'), snap => {
+    productos = snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>a.nombre.localeCompare(b.nombre));
+    renderTablaProductos(productos);
+    renderSelectSalidas();
+    renderStockSalidas();
+  });
+
+  // Historial en tiempo real
+  if (unsubHist) unsubHist();
+  unsubHist = onSnapshot(query(collection(db,'historial'),orderBy('fecha','desc')), snap => {
+    historial = snap.docs.map(d=>({id:d.id,...d.data()}));
+    calcularResumenHistorial(historial);
+    renderListaHistorial(historial);
+  });
+}
+
+// ── Navigation ────────────────────────────────────
+window.showSection = (name) => {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+  document.getElementById('section-'+name).classList.add('active');
+  document.getElementById('nav-'+name).classList.add('active');
+  if (name === 'dashboard') loadDashboard();
+};
+
+// ── LOGIN ─────────────────────────────────────────
+window.doLogin = async () => {
+  const email = document.getElementById('login-email').value.trim();
+  const pass  = document.getElementById('login-pass').value;
+  const msg   = document.getElementById('login-msg');
+  const btn   = document.getElementById('btn-login');
+  msg.className='msg'; msg.textContent='';
+  if (!email||!pass) { msg.className='msg error'; msg.textContent='Completa todos los campos.'; return; }
+  btn.disabled=true; btn.textContent='Entrando...';
+  try {
+    await signInWithEmailAndPassword(auth,email,pass);
+  } catch(e) {
+    msg.className='msg error';
+    const codes = {
+      'auth/invalid-credential': 'Correo o contraseña incorrectos.',
+      'auth/user-not-found': 'Usuario no existe.',
+      'auth/wrong-password': 'Contraseña incorrecta.',
+      'auth/too-many-requests': 'Demasiados intentos. Espera unos minutos.',
+      'auth/network-request-failed': 'Sin conexión a internet.'
+    };
+    msg.className='msg error';
+    msg.textContent = codes[e.code] || ('Error: ' + e.code);
+    console.error('Auth error:', e.code, e.message);
+    btn.disabled=false; btn.textContent='Entrar';
+  }
+};
+
+window.doLogout = async () => { await signOut(auth); };
+
+document.addEventListener('keydown', e => {
+  if (e.key==='Enter') window.doLogin();
+});
+
+// ── DASHBOARD ─────────────────────────────────────
+async function loadDashboard() {
+  const [prodSnap, cajasSnap] = await Promise.all([
+    getDocs(collection(db,'productos')),
+    getDocs(collection(db,'cajas'))
+  ]);
+  const prods = prodSnap.docs.map(d=>({id:d.id,...d.data()}));
+  const totalStock = prods.reduce((s,p)=>s+(p.stock||0),0);
+  const stockBajo  = prods.filter(p=>(p.stock||0)<=10).length;
+
+  document.getElementById('stat-total').textContent = prods.length;
+  document.getElementById('stat-stock').textContent = totalStock.toLocaleString();
+  document.getElementById('stat-cajas').textContent = cajasSnap.size;
+  document.getElementById('stat-bajo').textContent  = stockBajo;
+
+  // Top productos con más stock
+  const top = [...prods].sort((a,b)=>(b.stock||0)-(a.stock||0)).slice(0,5);
+  const topEl = document.getElementById('top-productos');
+  topEl.innerHTML = top.length===0
+    ? `<div class="empty"><div class="empty-icon">📦</div><div class="empty-text">Sin productos</div></div>`
+    : top.map(p=>`
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);">
+        <div style="display:flex;align-items:center;gap:12px;">
+          ${p.imagen_url?`<img src="${p.imagen_url}" class="prod-img" onclick="abrirLightbox('${p.imagen_url}')" />`:`<div class="prod-img-placeholder">📦</div>`}
+          <div>
+            <div style="font-size:14px;font-weight:500;">${p.nombre}</div>
+            <div style="font-size:12px;color:var(--muted);">${p.descripcion||''}</div>
+          </div>
+        </div>
+        <div class="badge ${(p.stock||0)<=10?'badge-red':(p.stock||0)<=50?'badge-yellow':'badge-green'}">${p.stock||0} pz</div>
+      </div>`).join('');
+
+  // Top productos más enviados (con imagen)
+  const conteoProd = {};
+  cajasSnap.docs.forEach(d=>{
+    const c=d.data();
+    (c.productos||[]).forEach(p=>{ conteoProd[p.nombre]=(conteoProd[p.nombre]||{cantidad:0,imagen_url:p.imagen_url||''}); conteoProd[p.nombre].cantidad+=(p.cantidad||0); });
+  });
+  const topEnviados = Object.entries(conteoProd).sort((a,b)=>b[1].cantidad-a[1].cantidad).slice(0,5);
+  const topEnvEl = document.getElementById('top-enviados');
+  topEnvEl.innerHTML = topEnviados.length===0
+    ? `<div class="empty"><div class="empty-icon">📤</div><div class="empty-text">Sin envíos aún</div></div>`
+    : topEnviados.map(([nombre,info])=>`
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);">
+        <div style="display:flex;align-items:center;gap:12px;">
+          ${info.imagen_url?`<img src="${info.imagen_url}" class="prod-img" onclick="abrirLightbox('${info.imagen_url}')" />`:`<div class="prod-img-placeholder">📦</div>`}
+          <div style="font-size:14px;font-weight:500;">${nombre}</div>
+        </div>
+        <div class="badge badge-blue">${info.cantidad} pz</div>
+      </div>`).join('');
+
+  // Últimas salidas
+  const cajasQ = query(collection(db,'cajas'),orderBy('fecha','desc'),limit(5));
+  const cajasRec = await getDocs(cajasQ);
+  const salidaEl = document.getElementById('ultimas-salidas');
+  salidaEl.innerHTML = cajasRec.empty
+    ? `<div class="empty"><div class="empty-icon">📤</div><div class="empty-text">Sin salidas aún</div></div>`
+    : cajasRec.docs.map(d=>{
+        const c=d.data();
+        const fecha=c.fecha?.toDate?c.fecha.toDate().toLocaleDateString('es-MX'):'—';
+        const total=(c.productos||[]).reduce((s,p)=>s+(p.cantidad||0),0);
+        return `
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);">
+          <div>
+            <div style="font-size:14px;font-weight:500;">📦 ${c.nombre}</div>
+            <div style="font-size:12px;color:var(--muted);">${fecha} · ${(c.productos||[]).length} tipo(s)</div>
+          </div>
+          <div class="badge badge-blue">${total} pz</div>
+        </div>`;
+      }).join('');
+}
+
+// ── PRODUCTOS ─────────────────────────────────────
+function renderTablaProductos(lista) {
+  const tbody = document.getElementById('tabla-body');
+  if (!tbody) return;
+  if (lista.length===0) {
+    tbody.innerHTML=`<tr><td colspan="5"><div class="empty"><div class="empty-icon">📦</div><div class="empty-text">No hay productos</div><div class="empty-sub">Agrega tu primer producto</div></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = lista.map(p=>`
+    <tr>
+      <td>${p.imagen_url?`<img src="${p.imagen_url}" class="prod-img" onclick="abrirLightbox('${p.imagen_url}')"/>`:`<div class="prod-img-placeholder">📦</div>`}</td>
+      <td><strong>${p.nombre}</strong></td>
+      <td style="color:var(--muted);max-width:200px;">${p.descripcion||'—'}</td>
+      <td>
+        <span class="${(p.stock||0)===0?'stock-zero':(p.stock||0)<=10?'stock-low':'stock-ok'}" style="font-weight:600;font-size:15px;">${p.stock||0}</span>
+        <span style="color:var(--muted);font-size:12px;"> pz</span>
+      </td>
+      <td style="display:flex;gap:8px;">
+        <button class="btn btn-secondary btn-sm" onclick="editarProducto('${p.id}')">✏️ Editar</button>
+        <button class="btn btn-danger btn-sm" onclick="eliminarProducto('${p.id}','${p.nombre.replace(/'/g,"\\'")}')">🗑️</button>
+      </td>
+    </tr>`).join('');
+}
+
+window.filtrarProductos = () => {
+  const q = document.getElementById('buscador').value.toLowerCase();
+  renderTablaProductos(productos.filter(p=>p.nombre.toLowerCase().includes(q)||(p.descripcion||'').toLowerCase().includes(q)));
+};
+
+window.abrirModal = () => {
+  editId=null;
+  document.getElementById('modal-titulo').textContent='Agregar producto';
+  document.getElementById('p-nombre').value='';
+  document.getElementById('p-desc').value='';
+  document.getElementById('p-stock').value='';
+  document.getElementById('p-imagen').value='';
+  document.getElementById('img-preview').style.display='none';
+  document.getElementById('img-current').style.display='none';
+  document.getElementById('modal-msg').style.display='none';
+  document.getElementById('modal').classList.add('open');
+};
+
+window.editarProducto = (id) => {
+  const p=productos.find(x=>x.id===id); if (!p) return;
+  editId=id;
+  document.getElementById('modal-titulo').textContent='Editar producto';
+  document.getElementById('p-nombre').value=p.nombre||'';
+  document.getElementById('p-desc').value=p.descripcion||'';
+  document.getElementById('p-stock').value=p.stock||0;
+  document.getElementById('p-imagen').value='';
+  document.getElementById('img-preview').style.display='none';
+  if (p.imagen_url) { document.getElementById('img-current').style.display='block'; document.getElementById('current-src').src=p.imagen_url; }
+  else document.getElementById('img-current').style.display='none';
+  document.getElementById('modal-msg').style.display='none';
+  document.getElementById('modal').classList.add('open');
+};
+
+window.cerrarModal = () => document.getElementById('modal').classList.remove('open');
+
+window.previewImg = (e) => {
+  const file=e.target.files[0]; if (!file) return;
+  const reader=new FileReader();
+  reader.onload=ev=>{ document.getElementById('preview-src').src=ev.target.result; document.getElementById('img-preview').style.display='block'; };
+  reader.readAsDataURL(file);
+};
+
+async function subirCloudinary(file) {
+  const fd=new FormData(); fd.append('file',file); fd.append('upload_preset',PRESET);
+  const res=await fetch(`https://api.cloudinary.com/v1_1/${CLOUD}/image/upload`,{method:'POST',body:fd});
+  return (await res.json()).secure_url;
+}
+
+window.guardarProducto = async () => {
+  const nombre=document.getElementById('p-nombre').value.trim();
+  const desc  =document.getElementById('p-desc').value.trim();
+  const stock =parseInt(document.getElementById('p-stock').value)||0;
+  const file  =document.getElementById('p-imagen').files[0];
+  const msg   =document.getElementById('modal-msg');
+  const btn   =document.getElementById('btn-guardar');
+  msg.style.display='none';
+  if (!nombre) { msg.textContent='El nombre es obligatorio.'; msg.style.display='block'; return; }
+  btn.disabled=true; btn.textContent='Guardando...';
+  try {
+    let imagen_url = editId ? (productos.find(p=>p.id===editId)?.imagen_url||'') : '';
+    if (file) imagen_url = await subirCloudinary(file);
+    const data={ nombre, descripcion:desc, stock, imagen_url, actualizado_en:serverTimestamp() };
+    if (editId) {
+      await updateDoc(doc(db,'productos',editId),data);
+      cerrarModal();
+      showToast('Producto actualizado ✓','success');
+    } else {
+      data.creado_en=serverTimestamp(); data.creado_por=currentUser.uid;
+      await addDoc(collection(db,'productos'),data);
+      cerrarModal();
+      showToast('Producto agregado ✓','success');
+    }
+  } catch(e) {
+    let errMsg = e.message || 'Error desconocido';
+    if (e.code === 'permission-denied' || errMsg.includes('permission')) {
+      errMsg = 'Sin permisos en Firestore. Revisa las reglas en Firebase Console.';
+    } else if (errMsg.includes('offline') || errMsg.includes('unavailable')) {
+      errMsg = 'Sin conexión a Firestore. Verifica tu internet.';
+    }
+    msg.textContent = '❌ ' + errMsg;
+    msg.style.display='block';
+    console.error('Firestore error:', e.code, e.message);
+  }
+  btn.disabled=false; btn.textContent='Guardar';
+};
+
+window.eliminarProducto = async (id,nombre) => {
+  if (!confirm(`¿Eliminar "${nombre}"? Esta acción no se puede deshacer.`)) return;
+  await deleteDoc(doc(db,'productos',id));
+  showToast('Producto eliminado','error');
+};
+
+// ── SALIDAS ───────────────────────────────────────
+function renderSelectSalidas() {
+  const sel=document.getElementById('prod-select'); if (!sel) return;
+  sel.innerHTML='<option value="">— Selecciona un producto —</option>'+
+    productos.map(p=>`<option value="${p.id}">${p.nombre} (${p.stock||0} pz disponibles)</option>`).join('');
+}
+
+function renderStockSalidas() {
+  const el=document.getElementById('stock-lista'); if (!el) return;
+  if (productos.length===0) { el.innerHTML=`<div class="empty"><div class="empty-icon">📦</div><div class="empty-text">Sin productos</div></div>`; return; }
+  el.innerHTML=productos.map(p=>`
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);">
+      <div style="display:flex;align-items:center;gap:10px;">
+        ${p.imagen_url?`<img src="${p.imagen_url}" class="prod-img" onclick="abrirLightbox('${p.imagen_url}')"/>`:`<div class="prod-img-placeholder">📦</div>`}
+        <div style="font-size:14px;font-weight:500;">${p.nombre}</div>
+      </div>
+      <div class="badge ${(p.stock||0)===0?'badge-red':(p.stock||0)<=10?'badge-yellow':'badge-green'}">${p.stock||0} pz</div>
+    </div>`).join('');
+}
+
+window.agregarItem = () => {
+  const prodId=document.getElementById('prod-select').value;
+  const cant=parseInt(document.getElementById('prod-cantidad').value)||0;
+  const msg=document.getElementById('caja-msg');
+  msg.style.display='none';
+  if (!prodId) { msg.textContent='Selecciona un producto.'; msg.style.display='block'; return; }
+  if (cant<=0) { msg.textContent='Ingresa una cantidad válida.'; msg.style.display='block'; return; }
+  const prod=productos.find(p=>p.id===prodId); if (!prod) return;
+  const yaEnCaja=itemsCaja.find(i=>i.producto_id===prodId);
+  const cantTotal=cant+(yaEnCaja?.cantidad||0);
+  if (cantTotal>(prod.stock||0)) { msg.textContent=`Stock insuficiente. Disponible: ${prod.stock||0} pz`; msg.style.display='block'; return; }
+  if (yaEnCaja) yaEnCaja.cantidad+=cant;
+  else itemsCaja.push({producto_id:prodId,nombre:prod.nombre,cantidad:cant,imagen_url:prod.imagen_url||''});
+  document.getElementById('prod-select').value='';
+  document.getElementById('prod-cantidad').value='';
+  renderItemsCaja();
+};
+
+function renderItemsCaja() {
+  const el=document.getElementById('items-caja');
+  const resumen=document.getElementById('resumen-total');
+  if (itemsCaja.length===0) {
+    el.innerHTML=`<div style="color:var(--muted);font-size:13px;text-align:center;padding:20px;">Aún no hay productos en esta caja</div>`;
+    resumen.style.display='none'; return;
+  }
+  const total=itemsCaja.reduce((s,i)=>s+i.cantidad,0);
+  document.getElementById('total-pzas').textContent=total;
+  document.getElementById('total-tipos').textContent=itemsCaja.length;
+  resumen.style.display='block';
+  el.innerHTML=`
+    <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:12px;">
+      ${itemsCaja.map((item,idx)=>`
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--border);">
+          <div style="display:flex;align-items:center;gap:10px;">
+            ${item.imagen_url?`<img src="${item.imagen_url}" class="prod-img" onclick="abrirLightbox('${item.imagen_url}')"/>`:`<div class="prod-img-placeholder" style="width:36px;height:36px;font-size:16px;">📦</div>`}
+            <div>
+              <div style="font-size:14px;font-weight:500;">${item.nombre}</div>
+              <div style="font-size:12px;color:var(--muted);">${item.cantidad} piezas</div>
+            </div>
+          </div>
+          <button onclick="quitarItem(${idx})" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:18px;">✕</button>
+        </div>`).join('')}
+    </div>`;
+}
+
+window.quitarItem = (idx) => { itemsCaja.splice(idx,1); renderItemsCaja(); };
+
+window.enviarCaja = async () => {
+  const nombre=document.getElementById('caja-nombre').value.trim();
+  const msg=document.getElementById('caja-msg');
+  msg.style.display='none';
+  if (!nombre) { msg.textContent='Pon un nombre a la caja.'; msg.style.display='block'; return; }
+  if (itemsCaja.length===0) { msg.textContent='Agrega al menos un producto.'; msg.style.display='block'; return; }
+  const btn=document.querySelector('button[onclick="enviarCaja()"]');
+  btn.disabled=true; btn.textContent='Registrando...';
+  try {
+    const batch=writeBatch(db);
+    const cajaRef=doc(collection(db,'cajas'));
+    batch.set(cajaRef,{ nombre, productos:itemsCaja, enviado_por:currentUser.uid, usuario_nombre:userName, fecha:serverTimestamp() });
+    const histRef=doc(collection(db,'historial'));
+    batch.set(histRef,{ caja_id:cajaRef.id, caja_nombre:nombre, productos:itemsCaja, usuario:userName, fecha:serverTimestamp() });
+    for (const item of itemsCaja) {
+      const prod=productos.find(p=>p.id===item.producto_id);
+      if (prod) batch.update(doc(db,'productos',item.producto_id),{ stock:Math.max(0,(prod.stock||0)-item.cantidad) });
+    }
+    await batch.commit();
+    showToast(`Caja "${nombre}" registrada ✓`,'success');
+    document.getElementById('caja-nombre').value='';
+    itemsCaja=[]; renderItemsCaja();
+  } catch(e) { msg.textContent='Error: '+e.message; msg.style.display='block'; }
+  btn.disabled=false; btn.textContent='📤 Registrar salida';
+};
+
+// ── HISTORIAL ─────────────────────────────────────
+function calcularResumenHistorial(lista) {
+  document.getElementById('r-cajas').textContent=lista.length;
+  const totalPzas=lista.reduce((s,c)=>(c.productos||[]).reduce((ss,p)=>ss+(p.cantidad||0),0)+s,0);
+  document.getElementById('r-piezas').textContent=totalPzas.toLocaleString();
+  const conteo={};
+  lista.forEach(c=>(c.productos||[]).forEach(p=>{ conteo[p.nombre]=(conteo[p.nombre]||0)+(p.cantidad||0); }));
+  const top=Object.entries(conteo).sort((a,b)=>b[1]-a[1])[0];
+  document.getElementById('r-top').textContent=top?`${top[0]} (${top[1]} pz)`:'—';
+}
+
+function renderListaHistorial(lista) {
+  const el=document.getElementById('lista-cajas'); if (!el) return;
+  if (lista.length===0) { el.innerHTML=`<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">Sin registros</div><div class="empty-sub">Las salidas aparecerán aquí</div></div>`; return; }
+  el.innerHTML=lista.map(c=>{
+    const fecha=c.fecha?.toDate?c.fecha.toDate().toLocaleString('es-MX',{dateStyle:'medium',timeStyle:'short'}):'—';
+    const total=(c.productos||[]).reduce((s,p)=>s+(p.cantidad||0),0);
+    return `
+      <div class="card" style="margin-bottom:14px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
+        <div>
+          <div style="font-size:16px;font-weight:600;">📦 ${c.caja_nombre}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px;">${fecha} · Por: ${c.usuario||'—'}</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <span class="badge badge-blue">${total} pz totales</span>
+          <span class="badge badge-green">${(c.productos||[]).length} producto(s)</span>
+          <button class="btn-delete-hist" title="Eliminar registro" onclick="eliminarHistorial('${c.id}','${(c.caja_nombre||'').replace(/'/g,"\\'")}')">🗑️</button>
+        </div>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;">
+        ${(c.productos||[]).map(p=>`
+          <div style="display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 12px;">
+            ${p.imagen_url?`<img src="${p.imagen_url}" style="width:28px;height:28px;border-radius:6px;object-fit:cover;cursor:zoom-in;" onclick="abrirLightbox('${p.imagen_url}')">`:`<span>📦</span>`}
+            <span style="font-size:13px;font-weight:500;">${p.nombre}</span>
+            <span class="badge badge-yellow" style="font-size:11px;">${p.cantidad} pz</span>
+          </div>`).join('')}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+window.filtrarHistorial = () => {
+  const q=document.getElementById('filtro-caja').value.toLowerCase();
+  const fecha=document.getElementById('filtro-fecha').value;
+  let lista=historial;
+  if (q) lista=lista.filter(c=>c.caja_nombre?.toLowerCase().includes(q));
+  if (fecha) lista=lista.filter(c=>{ if (!c.fecha?.toDate) return false; return c.fecha.toDate().toISOString().split('T')[0]===fecha; });
+  renderListaHistorial(lista);
+};
+
+window.limpiarFiltros = () => {
+  document.getElementById('filtro-caja').value='';
+  document.getElementById('filtro-fecha').value='';
+  renderListaHistorial(historial);
+};
+
+// ── LIGHTBOX ──────────────────────────────────────
+window.abrirLightbox = (src) => {
+  document.getElementById('lightbox-img').src = src;
+  document.getElementById('lightbox-overlay').classList.add('open');
+};
+window.cerrarLightbox = () => {
+  document.getElementById('lightbox-overlay').classList.remove('open');
+  document.getElementById('lightbox-img').src = '';
+};
+document.addEventListener('keydown', e => { if (e.key==='Escape') cerrarLightbox(); });
+
+// ── SCANNER ───────────────────────────────────────
+let scannerStream = null;
+let scannerInterval = null;
+
+window.abrirScanner = async () => {
+  document.getElementById('scanner-modal-overlay').classList.add('open');
+  document.getElementById('scanner-status').textContent = 'Iniciando cámara...';
+  try {
+    scannerStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    const video = document.getElementById('scanner-video');
+    video.srcObject = scannerStream;
+    await video.play();
+    document.getElementById('scanner-status').textContent = 'Apunta al código de barras o QR del producto';
+    // Usar BarcodeDetector si está disponible
+    if ('BarcodeDetector' in window) {
+      const detector = new BarcodeDetector({ formats: ['ean_13','ean_8','qr_code','code_128','code_39','upc_a','upc_e'] });
+      const canvas = document.getElementById('scanner-canvas');
+      const ctx = canvas.getContext('2d');
+      scannerInterval = setInterval(async () => {
+        if (video.readyState === video.HAVE_ENOUGH_DATA) {
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          ctx.drawImage(video, 0, 0);
+          try {
+            const codes = await detector.detect(canvas);
+            if (codes.length > 0) {
+              const valor = codes[0].rawValue;
+              document.getElementById('p-nombre').value = valor;
+              document.getElementById('scanner-status').textContent = `✅ Detectado: ${valor}`;
+              setTimeout(() => cerrarScanner(), 800);
+            }
+          } catch(e) {}
+        }
+      }, 300);
+    } else {
+      document.getElementById('scanner-status').textContent = '⚠️ Tu navegador no soporta escaneo automático. Captura la imagen y escribe el código manualmente.';
+    }
+  } catch(e) {
+    document.getElementById('scanner-status').textContent = '❌ No se pudo acceder a la cámara. Verifica los permisos.';
+  }
+};
+
+window.cerrarScanner = () => {
+  if (scannerInterval) { clearInterval(scannerInterval); scannerInterval = null; }
+  if (scannerStream) { scannerStream.getTracks().forEach(t=>t.stop()); scannerStream = null; }
+  document.getElementById('scanner-video').srcObject = null;
+  document.getElementById('scanner-modal-overlay').classList.remove('open');
+};
+
+// ── ELIMINAR HISTORIAL ─────────────────────────────
+window.eliminarHistorial = async (id, nombre) => {
+  if (!confirm(`¿Eliminar el registro "${nombre}" del historial? Esta acción no se puede deshacer.`)) return;
+  try {
+    await deleteDoc(doc(db,'historial',id));
+    showToast('Registro eliminado del historial','error');
+  } catch(e) {
+    showToast('Error al eliminar: '+e.message,'error');
+  }
+};
+
+// ── TOAST ─────────────────────────────────────────
+function showToast(msg,type='success') {
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.className='show '+type;
+  setTimeout(()=>t.className='',3000);
+}
+</script>
+</body>
+</html>
