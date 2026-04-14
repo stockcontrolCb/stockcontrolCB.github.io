@@ -204,8 +204,11 @@
     #scanner-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: none; align-items: center; justify-content: center; z-index: 1100; }
     #scanner-modal-overlay.open { display: flex; }
     #scanner-box { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 28px; width: 100%; max-width: 440px; }
+    #scanner-container { position: relative; display: none; }
     #scanner-video { width: 100%; border-radius: 10px; background: #000; display: block; }
     #scanner-status { margin-top: 10px; font-size: 13px; color: var(--muted); text-align: center; }
+    .btn-flash { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 13px; cursor: pointer; transition: all 0.2s; }
+    .btn-flash.flash-on { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 700; }
 
     /* ── DELETE HISTORY ── */
     .btn-delete-hist { background: none; border: none; color: var(--danger); cursor: pointer; font-size: 16px; padding: 4px 8px; opacity: 0.7; transition: opacity 0.15s; }
@@ -447,10 +450,16 @@
       <div style="font-size:17px;font-weight:600;">📷 Escanear código</div>
       <button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;" onclick="cerrarScanner()">✕</button>
     </div>
-    <video id="scanner-video" autoplay playsinline></video>
-    <canvas id="scanner-canvas" style="display:none;"></canvas>
+    <div id="scanner-container">
+      <video id="scanner-video" autoplay playsinline></video>
+      <canvas id="overlay-scanner-container" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:5;border-radius:10px;"></canvas>
+    </div>
     <div id="scanner-status">Apunta la cámara al código de barras o QR del producto</div>
-    <button class="btn btn-secondary" style="width:100%;margin-top:14px;" onclick="cerrarScanner()">Cancelar</button>
+    <div style="display:flex;gap:8px;margin-top:14px;">
+      <button class="btn-flash" id="btn-flash-scanner-container" style="display:none;" onclick="scannerPepe.toggleFlash()">🔦 Flash</button>
+      <button class="btn btn-secondary" style="flex:1;" onclick="cerrarScanner()">Cancelar</button>
+    </div>
+    <button id="btn-scanner-toggle" style="display:none;"></button>
   </div>
 </div>
 
@@ -459,6 +468,7 @@
 <!-- ════════════════════════════════
      SCRIPT
 ════════════════════════════════ -->
+<script src="https://unpkg.com/@zxing/library@0.18.6/umd/index.min.js"></script>
 <script type="module">
 import { initializeApp }  from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut }
@@ -926,73 +936,294 @@ window.cerrarLightbox = () => {
 document.addEventListener('keydown', e => { if (e.key==='Escape') cerrarLightbox(); });
 
 // ── SCANNER ───────────────────────────────────────
-let scannerStream = null;
-let scannerInterval = null;
+function crearScanner() {
+  return {
+    active: false, stream: null, loopId: null,
+    zxingReader: null, flashOn: false, flashSupported: false,
+    _containerId: null, _btnId: null, _processing: false,
+
+    _beep() {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.connect(g); g.connect(ctx.destination);
+        o.frequency.value = 1900; o.type = 'sine';
+        g.gain.setValueAtTime(0.4, ctx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
+        o.start(); o.stop(ctx.currentTime + 0.12);
+      } catch(e) {}
+    },
+
+    async _initFlash() {
+      try {
+        const track = this.stream?.getVideoTracks()[0];
+        const caps  = track?.getCapabilities?.() || {};
+        if (caps.torch) {
+          this.flashSupported = true;
+          const btn = document.getElementById('btn-flash-' + this._containerId);
+          if (btn) btn.style.display = 'inline-flex';
+        }
+      } catch(e) {}
+    },
+
+    async toggleFlash() {
+      if (!this.flashSupported || !this.stream) return;
+      this.flashOn = !this.flashOn;
+      const track = this.stream.getVideoTracks()[0];
+      try {
+        await track.applyConstraints({ advanced: [{ torch: this.flashOn }] });
+        const btn = document.getElementById('btn-flash-' + this._containerId);
+        if (btn) {
+          btn.textContent = this.flashOn ? '🔦 ON' : '🔦 Flash';
+          btn.classList.toggle('flash-on', this.flashOn);
+        }
+      } catch(e) { showToast('Flash no soportado', 'error'); }
+    },
+
+    _startNativeLoop(video, det, onDetected) {
+      const offscreen = new OffscreenCanvas(1, 1);
+      const offCtx    = offscreen.getContext('2d', { willReadFrequently: true });
+      const overlay   = document.getElementById('overlay-' + this._containerId);
+      const ovCtx     = overlay ? overlay.getContext('2d') : null;
+
+      let lastCode = null, confirmCount = 0, failFrames = 0;
+      const CONFIRM = 1;
+
+      let zxingAux = null;
+      const getZxingAux = async () => {
+        if (zxingAux) return zxingAux;
+        if (typeof ZXing === 'undefined') return null;
+        const hints = new Map([[ZXing.DecodeHintType.TRY_HARDER, true]]);
+        zxingAux = new ZXing.BrowserMultiFormatReader(hints, 0);
+        return zxingAux;
+      };
+
+      const drawBox = (barcode, vw, vh, confirmed) => {
+        if (!ovCtx || !overlay) return;
+        overlay.width  = overlay.clientWidth  || overlay.offsetWidth  || vw;
+        overlay.height = overlay.clientHeight || overlay.offsetHeight || vh;
+        ovCtx.clearRect(0, 0, overlay.width, overlay.height);
+        if (!barcode || !barcode.cornerPoints || !barcode.cornerPoints.length) return;
+        const sx = overlay.width / vw, sy = overlay.height / vh;
+        const pts = barcode.cornerPoints;
+        ovCtx.beginPath();
+        ovCtx.moveTo(pts[0].x * sx, pts[0].y * sy);
+        for (let i = 1; i < pts.length; i++) ovCtx.lineTo(pts[i].x * sx, pts[i].y * sy);
+        ovCtx.closePath();
+        const color = confirmed ? '#00FF88' : '#F5C842';
+        ovCtx.strokeStyle = color; ovCtx.lineWidth = confirmed ? 3.5 : 2.5;
+        ovCtx.shadowColor = color; ovCtx.shadowBlur  = confirmed ? 14 : 8;
+        ovCtx.stroke();
+        ovCtx.fillStyle = confirmed ? 'rgba(0,255,136,0.12)' : 'rgba(245,200,66,0.08)';
+        ovCtx.fill();
+        const minY = Math.min(...pts.map(p => p.y)) * sy;
+        const midX = pts.reduce((s,p) => s + p.x, 0) / pts.length * sx;
+        const label = barcode.format ? barcode.format.replace(/_/g,' ') : '';
+        if (label) {
+          ovCtx.font = 'bold 11px sans-serif'; ovCtx.fillStyle = confirmed ? '#00FF88' : '#F5C842';
+          ovCtx.shadowColor = '#000'; ovCtx.shadowBlur = 4;
+          ovCtx.textAlign = 'center';
+          ovCtx.fillText(label, midX, Math.max(14, minY - 6));
+        }
+      };
+
+      const clearBox = () => { if (ovCtx && overlay) ovCtx.clearRect(0, 0, overlay.width, overlay.height); };
+
+      const flashConfirm = () => {
+        if (!ovCtx || !overlay) return;
+        let n = 0;
+        const blink = setInterval(() => {
+          ovCtx.clearRect(0, 0, overlay.width, overlay.height);
+          if (n % 2 === 0) { ovCtx.fillStyle = 'rgba(0,255,136,0.25)'; ovCtx.fillRect(0, 0, overlay.width, overlay.height); }
+          if (++n >= 4) { clearInterval(blink); clearBox(); }
+        }, 60);
+      };
+
+      const getCrops = (vw, vh) => [
+        { sx: 0,                   sy: Math.floor(vh*0.33), sw: vw,                  sh: Math.floor(vh*0.34), scale: 1,   contrast: 1.6, bright: 1.05 },
+        { sx: Math.floor(vw*0.25), sy: Math.floor(vh*0.25), sw: Math.floor(vw*0.50), sh: Math.floor(vh*0.50), scale: 2.0, contrast: 1.5, bright: 1.05 },
+        { sx: 0,                   sy: Math.floor(vh*0.20), sw: vw,                  sh: Math.floor(vh*0.60), scale: 1,   contrast: 2.2, bright: 1.1  },
+        { sx: 0,                   sy: Math.floor(vh*0.04), sw: vw,                  sh: Math.floor(vh*0.32), scale: 1,   contrast: 1.6, bright: 1.05 },
+        { sx: 0,                   sy: Math.floor(vh*0.64), sw: vw,                  sh: Math.floor(vh*0.32), scale: 1,   contrast: 1.6, bright: 1.05 },
+        { sx: Math.floor(vw*0.20), sy: Math.floor(vh*0.20), sw: Math.floor(vw*0.60), sh: Math.floor(vh*0.60), scale: 2.0, contrast: 2.5, bright: 1.15 },
+      ];
+
+      const loop = async () => {
+        if (!this.active) return;
+        if (!this._processing && video.readyState >= 2 && video.videoWidth > 0) {
+          this._processing = true;
+          try {
+            const vw = video.videoWidth, vh = video.videoHeight;
+            let found = await det.detect(video);
+            if (!found.length) {
+              offscreen.width = vw; offscreen.height = vh;
+              offCtx.filter = 'contrast(1.8) brightness(1.08)';
+              offCtx.drawImage(video, 0, 0); offCtx.filter = 'none';
+              found = await det.detect(offscreen);
+            }
+            if (!found.length) {
+              const cropPromises = getCrops(vw, vh).map(async z => {
+                const dw = Math.floor(z.sw * z.scale), dh = Math.floor(z.sh * z.scale);
+                const oc = new OffscreenCanvas(dw, dh);
+                const oc_ctx = oc.getContext('2d', { willReadFrequently: true });
+                oc_ctx.filter = `contrast(${z.contrast}) brightness(${z.bright||1.05})`;
+                oc_ctx.drawImage(video, z.sx, z.sy, z.sw, z.sh, 0, 0, dw, dh);
+                oc_ctx.filter = 'none';
+                const cropFound = await det.detect(oc);
+                if (!cropFound.length) throw new Error('nf');
+                const xs = z.sw / dw, ys = z.sh / dh;
+                cropFound[0].cornerPoints = cropFound[0].cornerPoints.map(p => ({ x: p.x * xs + z.sx, y: p.y * ys + z.sy }));
+                return cropFound;
+              });
+              try { found = await Promise.any(cropPromises); } catch(e) {}
+            }
+            if (found.length) {
+              failFrames = 0;
+              const code = found[0].rawValue;
+              if (code === lastCode) { confirmCount++; } else { lastCode = code; confirmCount = 1; }
+              const confirmed = confirmCount >= CONFIRM;
+              drawBox(found[0], vw, vh, confirmed);
+              if (confirmed) {
+                flashConfirm(); this._beep();
+                try { navigator.vibrate?.([30, 10, 60]); } catch(e) {}
+                onDetected(code); return;
+              }
+            } else {
+              lastCode = null; confirmCount = 0; clearBox(); failFrames++;
+              if (failFrames > 30 && typeof ZXing !== 'undefined') {
+                try {
+                  const zx = await getZxingAux();
+                  if (zx) {
+                    const zRes = await zx.decodeFromVideoElement(video);
+                    if (zRes) {
+                      failFrames = 0; flashConfirm(); this._beep();
+                      try { navigator.vibrate?.([30, 10, 60]); } catch(e2) {}
+                      onDetected(zRes.getText()); return;
+                    }
+                  }
+                } catch(e2) {}
+              }
+            }
+          } catch(e) {}
+          this._processing = false;
+        }
+        this.loopId = setTimeout(loop, 16);
+      };
+      this.loopId = setTimeout(loop, 16);
+    },
+
+    async toggle({ videoId, containerId, btnId, onCode }) {
+      this._containerId = containerId; this._btnId = btnId;
+      if (this.active) { this.stop({ containerId, btnId }); return; }
+      this.active = true; this.flashOn = false; this._processing = false; this.flashSupported = false;
+      document.getElementById(containerId).style.display = 'block';
+      const video = document.getElementById(videoId);
+      const onDetected = (code) => {
+        if (!code || !code.trim()) return;
+        onCode(code.trim());
+        this.stop({ containerId, btnId });
+      };
+      try {
+        const constraints = {
+          video: {
+            facingMode: { ideal: 'environment' },
+            width:  { ideal: 1280 }, height: { ideal: 720 },
+            frameRate: { ideal: 30, max: 60 }
+          }
+        };
+        this.stream = await navigator.mediaDevices.getUserMedia(constraints);
+        video.srcObject = this.stream;
+        video.setAttribute('playsinline', true);
+        await video.play();
+        try {
+          const track = this.stream.getVideoTracks()[0];
+          const caps  = track.getCapabilities?.() || {};
+          const adv   = {};
+          if (caps.focusMode?.includes('continuous')) adv.focusMode = 'continuous';
+          if (caps.zoom) adv.zoom = caps.zoom.min;
+          if (Object.keys(adv).length) await track.applyConstraints({ advanced: [adv] }).catch(() => {});
+        } catch(e) {}
+        await this._initFlash();
+
+        if ('BarcodeDetector' in window) {
+          let formats;
+          try { formats = await BarcodeDetector.getSupportedFormats(); } catch(e) {
+            formats = ['ean_13','ean_8','upc_a','upc_e','code_128','code_39','code_93','itf','codabar','qr_code','data_matrix','pdf417','aztec'];
+          }
+          const det = new BarcodeDetector({ formats });
+          this._startNativeLoop(video, det, onDetected);
+        } else {
+          let t = 0;
+          while (typeof ZXing === 'undefined' && t++ < 20) await new Promise(r => setTimeout(r, 200));
+          if (typeof ZXing === 'undefined') throw new Error('ZXing no disponible');
+          const hints = new Map([
+            [ZXing.DecodeHintType.TRY_HARDER, true],
+            [ZXing.DecodeHintType.ALSO_INVERTED, false],
+            [ZXing.DecodeHintType.POSSIBLE_FORMATS, [
+              ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.EAN_8,
+              ZXing.BarcodeFormat.UPC_A,  ZXing.BarcodeFormat.UPC_E,
+              ZXing.BarcodeFormat.CODE_128, ZXing.BarcodeFormat.CODE_39,
+              ZXing.BarcodeFormat.CODE_93, ZXing.BarcodeFormat.ITF,
+              ZXing.BarcodeFormat.CODABAR, ZXing.BarcodeFormat.QR_CODE,
+              ZXing.BarcodeFormat.DATA_MATRIX, ZXing.BarcodeFormat.PDF_417,
+              ZXing.BarcodeFormat.AZTEC, ZXing.BarcodeFormat.RSS_14,
+              ZXing.BarcodeFormat.RSS_EXPANDED,
+            ]]
+          ]);
+          this.zxingReader = new ZXing.BrowserMultiFormatReader(hints, 0);
+          await this.zxingReader.decodeFromStream(this.stream, video, (result) => {
+            if (result) onDetected(result.getText());
+          });
+        }
+      } catch(e) {
+        console.error('Scanner:', e);
+        showToast('No se pudo abrir la cámara: ' + (e.message || e), 'error');
+        this.stop({ containerId, btnId });
+      }
+    },
+
+    stop({ containerId, btnId }) {
+      this.active = false; this._processing = false;
+      if (this.loopId !== null) { clearTimeout(this.loopId); this.loopId = null; }
+      if (this.stream) {
+        try { this.stream.getVideoTracks()[0]?.applyConstraints({ advanced: [{ torch: false }] }).catch(() => {}); } catch(e) {}
+        this.stream.getTracks().forEach(t => t.stop());
+        this.stream = null;
+      }
+      if (this.zxingReader) { try { this.zxingReader.reset(); } catch(e) {} this.zxingReader = null; }
+      const video = document.querySelector('#' + containerId + ' video');
+      if (video) video.srcObject = null;
+      const c = document.getElementById(containerId);
+      if (c) c.style.display = 'none';
+      const fb = document.getElementById('btn-flash-' + containerId);
+      if (fb) { fb.style.display = 'none'; fb.textContent = '🔦 Flash'; fb.classList.remove('flash-on'); }
+      this.flashSupported = false; this.flashOn = false;
+      const ov = document.getElementById('overlay-' + containerId);
+      if (ov) { const c2 = ov.getContext('2d'); if (c2) c2.clearRect(0,0,ov.width,ov.height); }
+    }
+  };
+}
+
+const scannerPepe = crearScanner();
+window.scannerPepe = scannerPepe;
 
 window.abrirScanner = async () => {
   document.getElementById('scanner-modal-overlay').classList.add('open');
   document.getElementById('scanner-status').textContent = 'Iniciando cámara...';
-  try {
-    scannerStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } } });
-    const video = document.getElementById('scanner-video');
-    video.srcObject = scannerStream;
-    await video.play();
-    document.getElementById('scanner-status').textContent = '📷 Apunta al código de barras o QR...';
-
-    // Cargar ZXing si no está cargado
-    if (!window.ZXing) {
-      await new Promise((res, rej) => {
-        const s = document.createElement('script');
-        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/zxing-js/0.20.0/zxing.min.js';
-        s.onload = res; s.onerror = rej;
-        document.head.appendChild(s);
-      });
+  await scannerPepe.toggle({
+    videoId: 'scanner-video',
+    containerId: 'scanner-container',
+    btnId: 'btn-scanner-toggle',
+    onCode: (codigo) => {
+      document.getElementById('p-nombre').value = codigo;
+      document.getElementById('scanner-status').textContent = `✅ Detectado: ${codigo}`;
+      setTimeout(() => cerrarScanner(), 700);
     }
-
-    const canvas = document.getElementById('scanner-canvas');
-    const ctx = canvas.getContext('2d');
-    const hints = new Map();
-    const formats = [
-      ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.EAN_8,
-      ZXing.BarcodeFormat.CODE_128, ZXing.BarcodeFormat.CODE_39,
-      ZXing.BarcodeFormat.UPC_A, ZXing.BarcodeFormat.UPC_E,
-      ZXing.BarcodeFormat.QR_CODE, ZXing.BarcodeFormat.DATA_MATRIX,
-      ZXing.BarcodeFormat.ITF, ZXing.BarcodeFormat.CODABAR
-    ];
-    hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, formats);
-    hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
-    const reader = new ZXing.MultiFormatReader();
-    reader.setHints(hints);
-
-    scannerInterval = setInterval(() => {
-      if (video.readyState !== video.HAVE_ENOUGH_DATA) return;
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      ctx.drawImage(video, 0, 0);
-      try {
-        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const luminance = new ZXing.RGBLuminanceSource(imgData.data, canvas.width, canvas.height);
-        const bitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminance));
-        const result = reader.decode(bitmap);
-        if (result) {
-          const valor = result.getText();
-          document.getElementById('p-nombre').value = valor;
-          document.getElementById('scanner-status').textContent = `✅ Detectado: ${valor}`;
-          setTimeout(() => cerrarScanner(), 900);
-        }
-      } catch(e) { /* sigue intentando */ }
-    }, 250);
-
-  } catch(e) {
-    document.getElementById('scanner-status').textContent = '❌ No se pudo acceder a la cámara. Verifica los permisos del navegador.';
-    console.error(e);
-  }
+  });
 };
 
 window.cerrarScanner = () => {
-  if (scannerInterval) { clearInterval(scannerInterval); scannerInterval = null; }
-  if (scannerStream) { scannerStream.getTracks().forEach(t=>t.stop()); scannerStream = null; }
-  document.getElementById('scanner-video').srcObject = null;
+  scannerPepe.stop({ containerId: 'scanner-container', btnId: 'btn-scanner-toggle' });
   document.getElementById('scanner-modal-overlay').classList.remove('open');
 };
 
