@@ -503,7 +503,16 @@ window.doLogin = async () => {
     await signInWithEmailAndPassword(auth,email,pass);
   } catch(e) {
     msg.className='msg error';
-    msg.textContent = e.code==='auth/invalid-credential'?'Correo o contraseña incorrectos.':'Error al iniciar sesión.';
+    const codes = {
+      'auth/invalid-credential': 'Correo o contraseña incorrectos.',
+      'auth/user-not-found': 'Usuario no existe.',
+      'auth/wrong-password': 'Contraseña incorrecta.',
+      'auth/too-many-requests': 'Demasiados intentos. Espera unos minutos.',
+      'auth/network-request-failed': 'Sin conexión a internet.'
+    };
+    msg.className='msg error';
+    msg.textContent = codes[e.code] || ('Error: ' + e.code);
+    console.error('Auth error:', e.code, e.message);
     btn.disabled=false; btn.textContent='Entrar';
   }
 };
@@ -664,8 +673,15 @@ window.guardarProducto = async () => {
       showToast('Producto agregado ✓','success');
     }
   } catch(e) {
-    msg.textContent='Error al guardar: '+e.message;
+    let errMsg = e.message || 'Error desconocido';
+    if (e.code === 'permission-denied' || errMsg.includes('permission')) {
+      errMsg = 'Sin permisos en Firestore. Revisa las reglas en Firebase Console.';
+    } else if (errMsg.includes('offline') || errMsg.includes('unavailable')) {
+      errMsg = 'Sin conexión a Firestore. Verifica tu internet.';
+    }
+    msg.textContent = '❌ ' + errMsg;
     msg.style.display='block';
+    console.error('Firestore error:', e.code, e.message);
   }
   btn.disabled=false; btn.textContent='Guardar';
 };
