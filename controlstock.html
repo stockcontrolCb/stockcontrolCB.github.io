@@ -653,10 +653,20 @@ window.guardarProducto = async () => {
     let imagen_url = editId ? (productos.find(p=>p.id===editId)?.imagen_url||'') : '';
     if (file) imagen_url = await subirCloudinary(file);
     const data={ nombre, descripcion:desc, stock, imagen_url, actualizado_en:serverTimestamp() };
-    if (editId) { await updateDoc(doc(db,'productos',editId),data); showToast('Producto actualizado ✓','success'); }
-    else { data.creado_en=serverTimestamp(); data.creado_por=currentUser.uid; await addDoc(collection(db,'productos'),data); showToast('Producto agregado ✓','success'); }
-    cerrarModal();
-  } catch(e) { msg.textContent='Error: '+e.message; msg.style.display='block'; }
+    if (editId) {
+      await updateDoc(doc(db,'productos',editId),data);
+      cerrarModal();
+      showToast('Producto actualizado ✓','success');
+    } else {
+      data.creado_en=serverTimestamp(); data.creado_por=currentUser.uid;
+      await addDoc(collection(db,'productos'),data);
+      cerrarModal();
+      showToast('Producto agregado ✓','success');
+    }
+  } catch(e) {
+    msg.textContent='Error al guardar: '+e.message;
+    msg.style.display='block';
+  }
   btn.disabled=false; btn.textContent='Guardar';
 };
 
