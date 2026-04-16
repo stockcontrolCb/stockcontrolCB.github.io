@@ -184,14 +184,19 @@
     .prod-img-placeholder { width: 44px; height: 44px; border-radius: 8px; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-size: 20px; }
 
     /* ── SCANNER ── */
-    #scanner-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: none; align-items: center; justify-content: center; z-index: 1100; padding: 16px; }
+    #scanner-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.88); display: none; align-items: center; justify-content: center; z-index: 1100; padding: 12px; }
     #scanner-modal-overlay.open { display: flex; }
-    #scanner-box { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 24px; width: 100%; max-width: 440px; }
+    #scanner-box { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 20px; width: 100%; max-width: 440px; }
     #scanner-container { position: relative; display: none; }
-    #scanner-video { width: 100%; border-radius: 10px; background: #000; display: block; }
+    #scanner-video { width: 100%; border-radius: 12px; background: #000; display: block; max-height: 60vh; object-fit: cover; }
     #scanner-status { margin-top: 10px; font-size: 13px; color: var(--muted); text-align: center; }
     .btn-flash { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 13px; cursor: pointer; transition: all 0.2s; }
     .btn-flash.flash-on { background: var(--accent); border-color: var(--accent); color: #fff; }
+    @keyframes scanLine {
+      0%   { top: 15%; opacity: 0.6; }
+      50%  { top: 80%; opacity: 1; }
+      100% { top: 15%; opacity: 0.6; }
+    }
 
     /* ── STOCK COLORS ── */
     .stock-ok   { color: var(--accent2); }
@@ -225,52 +230,88 @@
       .nav { display: none; }
       .mobile-nav { display: flex; }
       .mobile-topbar { display: flex; }
-      .main { margin-left: 0; padding: 0; max-width: 100vw; padding-bottom: 80px; }
-      .main-inner { padding: 14px 12px 20px; }
-      .grid-4 { grid-template-columns: repeat(2, 1fr); gap: 10px; }
-      .grid-3 { grid-template-columns: repeat(2, 1fr); gap: 10px; }
-      .grid-2 { grid-template-columns: 1fr; gap: 12px; }
-      .page-title { font-size: 20px; }
-      .page-header { margin-bottom: 14px; }
-      .page-header-row { flex-direction: column; align-items: flex-start !important; gap: 10px; }
-      #toast { bottom: 90px; right: 12px; left: 12px; max-width: none; }
-      table th:nth-child(3), table td:nth-child(3) { display: none; }
-      .stat-value { font-size: 24px; }
-      /* Salidas grid a columna única en móvil */
-      #section-salidas .grid-2 { grid-template-columns: 1fr; }
-      /* Historial grid a 1 col */
-      #section-historial .grid-2,
-      #section-historial .grid-3 { grid-template-columns: 1fr; }
-      /* Stats pills en grilla 2x2 */
-      .prod-stats-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-      .prod-stat-pill { border-radius: 10px; padding: 8px 12px; }
-      .prod-stat-pill strong { font-size: 16px; }
-      /* Tabla: ocultar enviadas también en móvil pequeño */
-      .table-wrap { border-radius: 12px; }
-      /* Cajas registradas más compactas */
-      .caja-row { padding: 10px 0; }
-      /* Filtros historial en columna */
-      #section-historial .card > div[style*="flex-wrap"] { flex-direction: column; }
-      /* Top 5 stock */
-      #top5-stock-lista { overflow: hidden; }
-      /* Card padding reducido */
-      .card { padding: 14px; }
-      .modal { padding: 20px 16px; }
+      .main { margin-left: 0 !important; padding: 0 !important; width: 100vw; max-width: 100vw; overflow-x: hidden; padding-bottom: 80px !important; }
+      .main-inner { padding: 12px 12px 24px !important; }
+      body { overflow-x: hidden; }
+
+      /* Títulos */
+      .page-title { font-size: 19px; }
+      .page-subtitle { font-size: 13px; }
+      .page-header { margin-bottom: 12px; }
+      .page-header-row { flex-direction: column !important; align-items: flex-start !important; gap: 10px; }
+
+      /* Grids */
+      .grid-4, .grid-3, .grid-2 { grid-template-columns: 1fr !important; gap: 10px !important; }
+
+      /* Stats pills — 2 columnas */
+      .prod-stats-row { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 8px !important; margin-bottom: 14px !important; }
+      .prod-stat-pill { border-radius: 10px; padding: 10px 12px !important; min-width: 0; }
+      .prod-stat-pill strong { font-size: 20px !important; }
+      .prod-stat-pill > div > div:first-child { font-size: 10px !important; }
+
+      /* Stat cards historial */
+      #section-historial .grid-3 { grid-template-columns: 1fr !important; }
+      .stat-value { font-size: 26px !important; }
+
+      /* Cards */
+      .card { padding: 14px !important; border-radius: 14px !important; }
+      .card-title { font-size: 14px !important; margin-bottom: 12px !important; }
+
+      /* Toast */
+      #toast { bottom: 90px !important; right: 10px !important; left: 10px !important; max-width: none !important; }
+
+      /* Tabla → cards en móvil */
+      .table-wrap table thead { display: none !important; }
+      .table-wrap table, .table-wrap tbody, .table-wrap tr { display: block !important; width: 100% !important; }
+      .table-wrap tr {
+        display: flex !important; flex-wrap: wrap !important; align-items: center !important;
+        gap: 8px !important; padding: 10px 0 !important;
+        border-bottom: 1px solid var(--border) !important;
+        position: relative !important;
+      }
+      .table-wrap tr:last-child { border-bottom: none !important; }
+      /* Img */
+      .table-wrap td:nth-child(1) { width: 44px !important; padding: 0 !important; flex-shrink: 0 !important; }
+      /* Nombre */
+      .table-wrap td:nth-child(2) { flex: 1 !important; min-width: 100px !important; padding: 0 !important; font-size: 14px !important; }
+      /* Descripción — ocultar */
+      .table-wrap td:nth-child(3) { display: none !important; }
+      /* Stock */
+      .table-wrap td:nth-child(4) { padding: 0 !important; font-size: 13px !important; }
+      /* Enviadas */
+      .table-wrap td:nth-child(5) { padding: 0 !important; }
+      /* Acciones */
+      .table-wrap td:nth-child(6) { padding: 0 !important; margin-left: auto !important; }
+      .table-wrap td:nth-child(6) .btn-sm { padding: 7px 10px !important; }
+
+      /* Buscador full width */
+      #buscador { max-width: 100% !important; }
+
+      /* Salidas */
+      #section-salidas .grid-2 { grid-template-columns: 1fr !important; }
+      #prod-select { font-size: 13px !important; }
+
+      /* Caja rows */
+      .caja-row { padding: 10px 0 !important; }
+      .caja-row > div:first-child { width: 100% !important; }
+
+      /* Historial filtros */
+      #section-historial .card > div[style*="flex"] { flex-direction: column !important; }
+
+      /* Modales */
+      .modal { padding: 20px 16px !important; border-radius: 16px !important; max-height: 95vh !important; }
+      .modal-title { font-size: 16px !important; }
+
+      /* Top 20 */
+      #top5-stock-lista > div > div { gap: 8px !important; padding: 8px 0 !important; }
     }
+
     @media (max-width: 480px) {
-      .grid-3 { grid-template-columns: 1fr; }
-      .grid-4 { grid-template-columns: 1fr 1fr; }
-      .login-card { padding: 32px 20px; }
-      /* Ocultar columna enviadas en tabla en pantallas muy pequeñas */
-      table th:nth-child(5), table td:nth-child(5) { display: none; }
-      .prod-stats-row { grid-template-columns: 1fr 1fr; }
-      /* Botones de acción más grandes */
-      .btn-sm { padding: 8px 12px; font-size: 13px; }
-      /* Texto de tabla más pequeño */
-      td { font-size: 13px; padding: 10px 10px; }
-      th { padding: 8px 10px; }
-      /* Caja modal full */
-      .modal { border-radius: 16px; }
+      .main-inner { padding: 10px 10px 20px !important; }
+      .prod-stats-row { grid-template-columns: 1fr 1fr !important; }
+      .prod-stat-pill strong { font-size: 18px !important; }
+      .login-card { padding: 28px 18px !important; }
+      .btn-full { padding: 13px 10px !important; font-size: 14px !important; }
     }
   </style>
 </head>
@@ -527,16 +568,35 @@
 <!-- SCANNER MODAL -->
 <div id="scanner-modal-overlay">
   <div id="scanner-box">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
       <div style="font-size:17px;font-weight:600;">📷 Escanear código</div>
-      <button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;" onclick="cerrarScanner()">✕</button>
+      <button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:22px;line-height:1;" onclick="cerrarScanner()">✕</button>
     </div>
-    <div id="scanner-container">
-      <video id="scanner-video" autoplay playsinline></video>
-      <canvas id="overlay-scanner-container" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:5;border-radius:10px;"></canvas>
+
+    <div id="scanner-container" style="display:none;">
+      <div style="position:relative;border-radius:12px;overflow:hidden;background:#000;">
+        <video id="scanner-video" autoplay playsinline muted style="width:100%;display:block;border-radius:12px;"></video>
+        <canvas id="overlay-scanner-container" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:5;border-radius:12px;"></canvas>
+        <!-- Guía de área de escaneo -->
+        <div id="scan-guide" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:6;">
+          <div style="position:relative;width:72%;max-width:260px;aspect-ratio:3/2;">
+            <!-- Esquinas animadas -->
+            <div style="position:absolute;top:0;left:0;width:22px;height:22px;border-top:3px solid #38d9a9;border-left:3px solid #38d9a9;border-radius:3px 0 0 0;"></div>
+            <div style="position:absolute;top:0;right:0;width:22px;height:22px;border-top:3px solid #38d9a9;border-right:3px solid #38d9a9;border-radius:0 3px 0 0;"></div>
+            <div style="position:absolute;bottom:0;left:0;width:22px;height:22px;border-bottom:3px solid #38d9a9;border-left:3px solid #38d9a9;border-radius:0 0 0 3px;"></div>
+            <div style="position:absolute;bottom:0;right:0;width:22px;height:22px;border-bottom:3px solid #38d9a9;border-right:3px solid #38d9a9;border-radius:0 0 3px 0;"></div>
+            <!-- Línea de escaneo animada -->
+            <div id="scan-line" style="position:absolute;left:4px;right:4px;height:2px;background:linear-gradient(90deg,transparent,#38d9a9,transparent);animation:scanLine 1.8s ease-in-out infinite;top:50%;"></div>
+          </div>
+        </div>
+      </div>
     </div>
-    <div id="scanner-status">Apunta la cámara al código de barras o QR del producto</div>
-    <div style="display:flex;gap:8px;margin-top:14px;">
+
+    <div id="scanner-status" style="margin-top:10px;font-size:13px;color:var(--muted);text-align:center;min-height:20px;">
+      Apunta la cámara al código de barras o QR
+    </div>
+
+    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">
       <button class="btn-flash" id="btn-flash-scanner-container" style="display:none;" onclick="scannerPepe.toggleFlash()">🔦 Flash</button>
       <button class="btn btn-secondary" style="flex:1;" onclick="cerrarScanner()">Cancelar</button>
     </div>
@@ -1211,17 +1271,23 @@ function crearScanner() {
     active: false, stream: null, loopId: null,
     zxingReader: null, flashOn: false, flashSupported: false,
     _containerId: null, _btnId: null, _processing: false,
+    _lastDetected: null, _confirmCount: 0, _CONFIRM: 2,
 
     _beep() {
       try {
         const ctx = new (window.AudioContext || window.webkitAudioContext)();
         const o = ctx.createOscillator(), g = ctx.createGain();
         o.connect(g); g.connect(ctx.destination);
-        o.frequency.value = 1900; o.type = 'sine';
-        g.gain.setValueAtTime(0.4, ctx.currentTime);
-        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
-        o.start(); o.stop(ctx.currentTime + 0.12);
+        o.frequency.value = 1800; o.type = 'sine';
+        g.gain.setValueAtTime(0.35, ctx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+        o.start(); o.stop(ctx.currentTime + 0.15);
       } catch(e) {}
+    },
+
+    _setStatus(msg, color) {
+      const el = document.getElementById('scanner-status');
+      if (el) { el.textContent = msg; el.style.color = color || 'var(--muted)'; }
     },
 
     async _initFlash() {
@@ -1247,139 +1313,176 @@ function crearScanner() {
       } catch(e) { showToast('Flash no soportado', 'error'); }
     },
 
+    _drawGuideBox(overlay, confirmed) {
+      if (!overlay) return;
+      const ctx = overlay.getContext('2d');
+      if (!ctx) return;
+      overlay.width  = overlay.clientWidth  || overlay.offsetWidth  || 320;
+      overlay.height = overlay.clientHeight || overlay.offsetHeight || 240;
+      ctx.clearRect(0, 0, overlay.width, overlay.height);
+    },
+
+    _flashConfirm(overlay) {
+      if (!overlay) return;
+      const ctx = overlay.getContext('2d');
+      if (!ctx) return;
+      overlay.width  = overlay.clientWidth  || 320;
+      overlay.height = overlay.clientHeight || 240;
+      let n = 0;
+      const blink = setInterval(() => {
+        ctx.clearRect(0, 0, overlay.width, overlay.height);
+        if (n % 2 === 0) {
+          ctx.fillStyle = 'rgba(56,217,169,0.28)';
+          ctx.fillRect(0, 0, overlay.width, overlay.height);
+        }
+        if (++n >= 4) { clearInterval(blink); ctx.clearRect(0, 0, overlay.width, overlay.height); }
+      }, 55);
+    },
+
+    // Intenta detectar con múltiples estrategias de preprocesamiento
+    async _tryDetect(det, video) {
+      const vw = video.videoWidth, vh = video.videoHeight;
+      if (!vw || !vh) return null;
+
+      // 1. Detección directa sobre el video
+      let found = await det.detect(video).catch(() => []);
+      if (found.length) return found[0].rawValue;
+
+      // 2. Alta resolución con contraste y brillo
+      const fullCanvas = new OffscreenCanvas(vw, vh);
+      const fullCtx = fullCanvas.getContext('2d', { willReadFrequently: true });
+      fullCtx.filter = 'contrast(1.9) brightness(1.1) saturate(0)';
+      fullCtx.drawImage(video, 0, 0);
+      fullCtx.filter = 'none';
+      found = await det.detect(fullCanvas).catch(() => []);
+      if (found.length) return found[0].rawValue;
+
+      // 3. Crop central ampliado (zona donde está la guía visual)
+      const cx = Math.floor(vw * 0.14), cy = Math.floor(vh * 0.25);
+      const cw = Math.floor(vw * 0.72), ch = Math.floor(vh * 0.50);
+      const scale = Math.min(2.5, 800 / cw);
+      const cropW = Math.floor(cw * scale), cropH = Math.floor(ch * scale);
+      const cropCanvas = new OffscreenCanvas(cropW, cropH);
+      const cropCtx = cropCanvas.getContext('2d', { willReadFrequently: true });
+      cropCtx.imageSmoothingEnabled = true;
+      cropCtx.imageSmoothingQuality = 'high';
+      cropCtx.filter = 'contrast(2.0) brightness(1.08)';
+      cropCtx.drawImage(video, cx, cy, cw, ch, 0, 0, cropW, cropH);
+      cropCtx.filter = 'none';
+      found = await det.detect(cropCanvas).catch(() => []);
+      if (found.length) return found[0].rawValue;
+
+      // 4. Crop central con alto contraste (códigos difíciles)
+      cropCtx.clearRect(0, 0, cropW, cropH);
+      cropCtx.filter = 'contrast(3.0) brightness(1.2) saturate(0)';
+      cropCtx.drawImage(video, cx, cy, cw, ch, 0, 0, cropW, cropH);
+      cropCtx.filter = 'none';
+      found = await det.detect(cropCanvas).catch(() => []);
+      if (found.length) return found[0].rawValue;
+
+      // 5. Franja horizontal completa (códigos de barras EAN/UPC anchos)
+      const stripH = Math.floor(vh * 0.4);
+      const stripY = Math.floor(vh * 0.30);
+      const stripCanvas = new OffscreenCanvas(vw, stripH);
+      const stripCtx = stripCanvas.getContext('2d', { willReadFrequently: true });
+      stripCtx.filter = 'contrast(2.2) brightness(1.05) saturate(0)';
+      stripCtx.drawImage(video, 0, stripY, vw, stripH, 0, 0, vw, stripH);
+      stripCtx.filter = 'none';
+      found = await det.detect(stripCanvas).catch(() => []);
+      if (found.length) return found[0].rawValue;
+
+      return null;
+    },
+
     _startNativeLoop(video, det, onDetected) {
-      const offscreen = new OffscreenCanvas(1, 1);
-      const offCtx    = offscreen.getContext('2d', { willReadFrequently: true });
-      const overlay   = document.getElementById('overlay-' + this._containerId);
-      const ovCtx     = overlay ? overlay.getContext('2d') : null;
-      let lastCode = null, confirmCount = 0, failFrames = 0;
-      const CONFIRM = 1;
-      let zxingAux = null;
-      const getZxingAux = async () => {
-        if (zxingAux) return zxingAux;
-        if (typeof ZXing === 'undefined') return null;
-        const hints = new Map([[ZXing.DecodeHintType.TRY_HARDER, true]]);
-        zxingAux = new ZXing.BrowserMultiFormatReader(hints, 0);
-        return zxingAux;
-      };
-      const drawBox = (barcode, vw, vh, confirmed) => {
-        if (!ovCtx || !overlay) return;
-        overlay.width  = overlay.clientWidth  || vw;
-        overlay.height = overlay.clientHeight || vh;
-        ovCtx.clearRect(0, 0, overlay.width, overlay.height);
-        if (!barcode || !barcode.cornerPoints || !barcode.cornerPoints.length) return;
-        const sx = overlay.width / vw, sy = overlay.height / vh;
-        const pts = barcode.cornerPoints;
-        ovCtx.beginPath();
-        ovCtx.moveTo(pts[0].x * sx, pts[0].y * sy);
-        for (let i = 1; i < pts.length; i++) ovCtx.lineTo(pts[i].x * sx, pts[i].y * sy);
-        ovCtx.closePath();
-        const color = confirmed ? '#00FF88' : '#F5C842';
-        ovCtx.strokeStyle = color; ovCtx.lineWidth = confirmed ? 3.5 : 2.5;
-        ovCtx.shadowColor = color; ovCtx.shadowBlur  = confirmed ? 14 : 8;
-        ovCtx.stroke();
-        ovCtx.fillStyle = confirmed ? 'rgba(0,255,136,0.12)' : 'rgba(245,200,66,0.08)';
-        ovCtx.fill();
-      };
-      const clearBox = () => { if (ovCtx && overlay) ovCtx.clearRect(0, 0, overlay.width, overlay.height); };
-      const flashConfirm = () => {
-        if (!ovCtx || !overlay) return;
-        let n = 0;
-        const blink = setInterval(() => {
-          ovCtx.clearRect(0, 0, overlay.width, overlay.height);
-          if (n % 2 === 0) { ovCtx.fillStyle = 'rgba(0,255,136,0.25)'; ovCtx.fillRect(0, 0, overlay.width, overlay.height); }
-          if (++n >= 4) { clearInterval(blink); clearBox(); }
-        }, 60);
-      };
-      const getCrops = (vw, vh) => [
-        { sx: 0, sy: Math.floor(vh*0.33), sw: vw, sh: Math.floor(vh*0.34), scale: 1, contrast: 1.6, bright: 1.05 },
-        { sx: Math.floor(vw*0.25), sy: Math.floor(vh*0.25), sw: Math.floor(vw*0.50), sh: Math.floor(vh*0.50), scale: 2.0, contrast: 1.5, bright: 1.05 },
-        { sx: 0, sy: Math.floor(vh*0.20), sw: vw, sh: Math.floor(vh*0.60), scale: 1, contrast: 2.2, bright: 1.1 },
-      ];
+      const overlay = document.getElementById('overlay-' + this._containerId);
+      this._lastDetected = null; this._confirmCount = 0;
+
       const loop = async () => {
         if (!this.active) return;
         if (!this._processing && video.readyState >= 2 && video.videoWidth > 0) {
           this._processing = true;
           try {
-            const vw = video.videoWidth, vh = video.videoHeight;
-            let found = await det.detect(video);
-            if (!found.length) {
-              offscreen.width = vw; offscreen.height = vh;
-              offCtx.filter = 'contrast(1.8) brightness(1.08)';
-              offCtx.drawImage(video, 0, 0); offCtx.filter = 'none';
-              found = await det.detect(offscreen);
-            }
-            if (!found.length) {
-              const cropPromises = getCrops(vw, vh).map(async z => {
-                const dw = Math.floor(z.sw * z.scale), dh = Math.floor(z.sh * z.scale);
-                const oc = new OffscreenCanvas(dw, dh);
-                const oc_ctx = oc.getContext('2d', { willReadFrequently: true });
-                oc_ctx.filter = `contrast(${z.contrast}) brightness(${z.bright||1.05})`;
-                oc_ctx.drawImage(video, z.sx, z.sy, z.sw, z.sh, 0, 0, dw, dh);
-                oc_ctx.filter = 'none';
-                const cropFound = await det.detect(oc);
-                if (!cropFound.length) throw new Error('nf');
-                return cropFound;
-              });
-              try { found = await Promise.any(cropPromises); } catch(e) {}
-            }
-            if (found.length) {
-              failFrames = 0;
-              const code = found[0].rawValue;
-              if (code === lastCode) { confirmCount++; } else { lastCode = code; confirmCount = 1; }
-              const confirmed = confirmCount >= CONFIRM;
-              drawBox(found[0], vw, vh, confirmed);
-              if (confirmed) {
-                flashConfirm(); this._beep();
-                try { navigator.vibrate?.([30, 10, 60]); } catch(e2) {}
-                onDetected(code); return;
+            const code = await this._tryDetect(det, video);
+            if (code) {
+              if (code === this._lastDetected) {
+                this._confirmCount++;
+              } else {
+                this._lastDetected = code; this._confirmCount = 1;
+                this._setStatus(`Código encontrado...`, 'var(--accent3)');
+              }
+              if (this._confirmCount >= this._CONFIRM) {
+                this._flashConfirm(overlay);
+                this._beep();
+                try { navigator.vibrate?.([40, 20, 80]); } catch(e) {}
+                this._setStatus(`✅ Detectado: ${code}`, 'var(--accent2)');
+                this.active = false;
+                clearTimeout(this.loopId);
+                onDetected(code);
+                return;
               }
             } else {
-              lastCode = null; confirmCount = 0; clearBox(); failFrames++;
-              if (failFrames > 30 && typeof ZXing !== 'undefined') {
-                try {
-                  const zx = await getZxingAux();
-                  if (zx) {
-                    const zRes = await zx.decodeFromVideoElement(video);
-                    if (zRes) { failFrames = 0; flashConfirm(); this._beep(); try { navigator.vibrate?.([30, 10, 60]); } catch(e2) {} onDetected(zRes.getText()); return; }
-                  }
-                } catch(e2) {}
-              }
+              this._lastDetected = null; this._confirmCount = 0;
             }
           } catch(e) {}
           this._processing = false;
         }
-        this.loopId = setTimeout(loop, 16);
+        // Menor intervalo = más intentos por segundo
+        this.loopId = setTimeout(loop, 80);
       };
-      this.loopId = setTimeout(loop, 16);
+      this.loopId = setTimeout(loop, 100);
     },
 
     async toggle({ videoId, containerId, btnId, onCode }) {
       this._containerId = containerId; this._btnId = btnId;
       if (this.active) { this.stop({ containerId, btnId }); return; }
-      this.active = true; this.flashOn = false; this._processing = false; this.flashSupported = false;
+      this.active = true; this.flashOn = false; this._processing = false;
+      this.flashSupported = false; this._lastDetected = null; this._confirmCount = 0;
+
       document.getElementById(containerId).style.display = 'block';
       const video = document.getElementById(videoId);
+      this._setStatus('Iniciando cámara...', 'var(--muted)');
+
       const onDetected = (code) => {
         if (!code || !code.trim()) return;
         onCode(code.trim());
-        this.stop({ containerId, btnId });
+        setTimeout(() => this.stop({ containerId, btnId }), 600);
       };
+
       try {
-        const constraints = { video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30, max: 60 } } };
-        this.stream = await navigator.mediaDevices.getUserMedia(constraints);
-        video.srcObject = this.stream;
-        video.setAttribute('playsinline', true);
+        // Intentar alta resolución primero, luego ideal, luego básica
+        let stream = null;
+        const attempts = [
+          { video: { facingMode: { exact: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 }, focusMode: 'continuous' } },
+          { video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } } },
+          { video: { facingMode: 'environment' } },
+          { video: true }
+        ];
+        for (const c of attempts) {
+          try { stream = await navigator.mediaDevices.getUserMedia(c); break; } catch(e) {}
+        }
+        if (!stream) throw new Error('No se pudo acceder a la cámara');
+
+        this.stream = stream;
+        video.srcObject = stream;
+        video.setAttribute('playsinline', 'true');
+        video.setAttribute('muted', 'true');
         await video.play();
+
+        // Intentar enfocar continuamente y reducir zoom
         try {
-          const track = this.stream.getVideoTracks()[0];
+          const track = stream.getVideoTracks()[0];
           const caps  = track.getCapabilities?.() || {};
           const adv   = {};
           if (caps.focusMode?.includes('continuous')) adv.focusMode = 'continuous';
+          else if (caps.focusMode?.includes('auto'))  adv.focusMode = 'auto';
           if (caps.zoom) adv.zoom = caps.zoom.min;
           if (Object.keys(adv).length) await track.applyConstraints({ advanced: [adv] }).catch(() => {});
         } catch(e) {}
+
         await this._initFlash();
+        this._setStatus('Apunta la cámara al código', 'var(--muted)');
+
         if ('BarcodeDetector' in window) {
           let formats;
           try { formats = await BarcodeDetector.getSupportedFormats(); } catch(e) {
@@ -1388,11 +1491,13 @@ function crearScanner() {
           const det = new BarcodeDetector({ formats });
           this._startNativeLoop(video, det, onDetected);
         } else {
+          // Fallback ZXing
           let t = 0;
-          while (typeof ZXing === 'undefined' && t++ < 20) await new Promise(r => setTimeout(r, 200));
-          if (typeof ZXing === 'undefined') throw new Error('ZXing no disponible');
+          while (typeof ZXing === 'undefined' && t++ < 30) await new Promise(r => setTimeout(r, 200));
+          if (typeof ZXing === 'undefined') throw new Error('Lector no disponible. Intenta con Chrome.');
           const hints = new Map([
             [ZXing.DecodeHintType.TRY_HARDER, true],
+            [ZXing.DecodeHintType.CHARACTER_SET, 'UTF-8'],
             [ZXing.DecodeHintType.POSSIBLE_FORMATS, [
               ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.EAN_8,
               ZXing.BarcodeFormat.UPC_A,  ZXing.BarcodeFormat.UPC_E,
@@ -1400,17 +1505,29 @@ function crearScanner() {
               ZXing.BarcodeFormat.CODE_93, ZXing.BarcodeFormat.ITF,
               ZXing.BarcodeFormat.CODABAR, ZXing.BarcodeFormat.QR_CODE,
               ZXing.BarcodeFormat.DATA_MATRIX, ZXing.BarcodeFormat.PDF_417,
-              ZXing.BarcodeFormat.AZTEC, ZXing.BarcodeFormat.RSS_14,
-              ZXing.BarcodeFormat.RSS_EXPANDED,
+              ZXing.BarcodeFormat.AZTEC,
             ]]
           ]);
-          this.zxingReader = new ZXing.BrowserMultiFormatReader(hints, 0);
-          await this.zxingReader.decodeFromStream(this.stream, video, (result) => {
-            if (result) onDetected(result.getText());
+          this.zxingReader = new ZXing.BrowserMultiFormatReader(hints, 200);
+          this.zxingReader.decodeFromStream(this.stream, video, (result, err) => {
+            if (result && this.active) {
+              const code = result.getText();
+              if (code === this._lastDetected) {
+                this._confirmCount++;
+              } else {
+                this._lastDetected = code; this._confirmCount = 1;
+              }
+              if (this._confirmCount >= this._CONFIRM) {
+                this._beep();
+                try { navigator.vibrate?.([40, 20, 80]); } catch(e2) {}
+                onDetected(code);
+              }
+            }
           });
         }
       } catch(e) {
         console.error('Scanner:', e);
+        this._setStatus('❌ ' + (e.message || 'Error de cámara'), 'var(--danger)');
         showToast('No se pudo abrir la cámara: ' + (e.message || e), 'error');
         this.stop({ containerId, btnId });
       }
@@ -1426,12 +1543,13 @@ function crearScanner() {
       }
       if (this.zxingReader) { try { this.zxingReader.reset(); } catch(e) {} this.zxingReader = null; }
       const video = document.querySelector('#' + containerId + ' video');
-      if (video) video.srcObject = null;
+      if (video) { video.pause(); video.srcObject = null; }
       const c = document.getElementById(containerId);
       if (c) c.style.display = 'none';
       const fb = document.getElementById('btn-flash-' + containerId);
       if (fb) { fb.style.display = 'none'; fb.textContent = '🔦 Flash'; fb.classList.remove('flash-on'); }
       this.flashSupported = false; this.flashOn = false;
+      this._lastDetected = null; this._confirmCount = 0;
       const ov = document.getElementById('overlay-' + containerId);
       if (ov) { const c2 = ov.getContext('2d'); if (c2) c2.clearRect(0,0,ov.width,ov.height); }
     }
